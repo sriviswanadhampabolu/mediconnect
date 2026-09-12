@@ -3,6 +3,7 @@
 <div align="center">
 
 [![Live Demo](https://img.shields.io/badge/🌐_Live_Demo-GitHub_Pages-2563eb?style=for-the-badge&logo=githubpages&logoColor=white)](https://sriviswanadhampabolu.github.io/mediconnect/)
+[![Demo Video](https://img.shields.io/badge/🎥_Demo_Video-Google_Drive-e11d48?style=for-the-badge&logo=googledrive&logoColor=white)](https://drive.google.com/file/d/1jobx6Bnvkb71F-RABgP7Vxi0EOUVZ62X/view?usp=drive_link)
 [![FastAPI](https://img.shields.io/badge/FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
 [![Python 3.10+](https://img.shields.io/badge/Python-3.10+-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
 [![Flutter](https://img.shields.io/badge/Flutter-02569B?style=for-the-badge&logo=flutter&logoColor=white)](https://flutter.dev/)
@@ -15,7 +16,7 @@
 **A full-stack, safety-first health assistant and hyperlocal pharmacy platform powered by a 12-agent orchestration graph.**  
 Connecting patients directly with small neighborhood medical stores, eliminating predatory aggregator markups, offering generic price transparency, and preventing medical harm through automated safety shields.
 
-[🌐 **Explore Live Web App**](https://sriviswanadhampabolu.github.io/mediconnect/) • [🎥 **Watch Demo Video**](#-demo-video--interactive-preview) • [🤖 **12-Agent Architecture**](#-12-agent-orchestration-architecture) • [🚀 **Quickstart**](#-quickstart--local-setup) • [📦 **API Reference**](#-api-endpoints-reference)
+[🌐 **Explore Live Web App**](https://sriviswanadhampabolu.github.io/mediconnect/) • [🎥 **Watch Demo Video**](https://drive.google.com/file/d/1jobx6Bnvkb71F-RABgP7Vxi0EOUVZ62X/view?usp=drive_link) • [🤖 **12-Agent Architecture**](#-12-agent-orchestration-architecture) • [🚀 **Quickstart**](#-quickstart--local-setup) • [📦 **API Reference**](#-api-endpoints-reference)
 
 </div>
 
@@ -26,6 +27,7 @@ Connecting patients directly with small neighborhood medical stores, eliminating
 | Resource | Link | Description |
 | :--- | :--- | :--- |
 | 🚀 **Live Web Simulator** | [**sriviswanadhampabolu.github.io/mediconnect**](https://sriviswanadhampabolu.github.io/mediconnect/) | Deployed, zero-setup interactive web console and mobile simulator |
+| 🎥 **Platform Demo Video** | [**Google Drive Video Walkthrough**](https://drive.google.com/file/d/1jobx6Bnvkb71F-RABgP7Vxi0EOUVZ62X/view?usp=drive_link) | Recorded walkthrough showing triage, ordering & emergency SOS |
 | 📚 **Interactive Swagger API** | `http://127.0.0.1:8000/docs` | Auto-generated OpenAPI specs and live sandbox |
 | 📱 **Cross-Platform Mobile App** | [`/mediconnect_flutter`](mediconnect_flutter/) | Production Flutter client (Android, iOS, Web & Desktop) |
 
@@ -33,22 +35,25 @@ Connecting patients directly with small neighborhood medical stores, eliminating
 
 ## 🎥 Demo Video & Interactive Preview
 
-> [!TIP]
-> **Demo Video Placeholder:** Add your video recording link or embed below (e.g. YouTube, Loom, or direct GitHub media upload).
-
 <div align="center">
 
-### 📺 Watch the Platform Walkthrough
+### 📺 Watch the MediConnect Platform Walkthrough
 
-<!-- Replace the URL below with your YouTube, Loom, or MP4 link -->
-[![MediConnect Demo Video](https://img.shields.io/badge/▶️_Watch_Full_Platform_Demo-FF0000?style=for-the-badge&logo=youtube&logoColor=white)](https://sriviswanadhampabolu.github.io/mediconnect/)
+[![Watch Demo on Google Drive](https://img.shields.io/badge/▶️_Watch_Demo_Video_(Google_Drive)-10b981?style=for-the-badge&logo=googledrive&logoColor=white)](https://drive.google.com/file/d/1jobx6Bnvkb71F-RABgP7Vxi0EOUVZ62X/view?usp=drive_link)
 
-*(Click above or embed your demo video link here)*
+<br />
 
-```markdown
-<!-- To embed a video directly on GitHub: -->
-<!-- Drag & drop your .mp4 / .webm video file right into this markdown file in GitHub's edit mode -->
-```
+👉 **[Click Here to Open and Watch the Demo Video on Google Drive](https://drive.google.com/file/d/1jobx6Bnvkb71F-RABgP7Vxi0EOUVZ62X/view?usp=drive_link)** 👈
+
+<br />
+
+> [!NOTE]
+> **Video Walkthrough Highlights:**
+> - **AI Multimodal Triage**: Voice & text condition prediction with safe clinical reasoning
+> - **Allergy Safety Veto**: Hardcoded denylists preventing adverse drug interactions
+> - **Generic Savings Calculator**: Instant 60–70% price comparison against branded drugs
+> - **Hyperlocal Pharmacy Order**: Direct checkout, live status updates & delivery tracking
+> - **1-Tap Emergency SOS**: Auto-dispatch of ambulance (108) and hospital ER bed holding pass
 
 </div>
 
