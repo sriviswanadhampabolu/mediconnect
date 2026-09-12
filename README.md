@@ -179,3 +179,5 @@ All 7 safety tests pass:
 2. Select **Open** and select the `android/` directory.
 3. Gradle will sync dependencies automatically (Jetpack Compose, Material3, Retrofit).
 4. Run on an Android Emulator or physical device. (The app connects to `http://10.0.2.2:8000/` in the emulator, pointing to your local FastAPI server).
+#   m e d i c o n n e c t  
+ 
