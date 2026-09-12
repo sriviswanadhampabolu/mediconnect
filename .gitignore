@@ -1,0 +1,36 @@
+# Python
+venv/
+.venv/
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.pytest_cache/
+*.egg-info/
+dist/
+build/
+
+# Database & Environment
+.env
+.env.*
+*.sqlite3
+*.db
+
+# Flutter & Dart
+mediconnect_flutter/build/
+mediconnect_flutter/.dart_tool/
+mediconnect_flutter/.flutter-plugins
+mediconnect_flutter/.flutter-plugins-dependencies
+mediconnect_flutter/.packages
+mediconnect_flutter/.pub-cache/
+mediconnect_flutter/.pub/
+
+# IDE & Editor
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
