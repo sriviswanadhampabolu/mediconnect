@@ -1,0 +1,1022 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MediConnect — AI Hyperlocal Health Assistant & Pharmacy</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css?v=2.1" />
+</head>
+<body>
+
+  <!-- ==============================================
+       STANDALONE FULL-SCREEN LOGIN SCREEN
+       Flow: [Open App] ➔ [Login Screen] ➔ (Success) ➔ [Dashboard]
+  =============================================== -->
+  <section class="login-screen-view" id="loginScreenView">
+    <div class="login-screen-backdrop"></div>
+    <div class="login-screen-layout">
+
+      <!-- Left / Hero Branding Column -->
+      <div class="login-hero-pane">
+        <div class="login-brand-badge">
+          <span class="login-brand-icon">🩺</span>
+          <div>
+            <h1 class="login-brand-title">MediConnect</h1>
+            <p class="login-brand-sub">AI Hyperlocal Health Assistant & Chemist Network</p>
+          </div>
+        </div>
+
+        <h2 class="login-hero-headline">Instant clinical triage & genuine medicines from your neighborhood chemist.</h2>
+        <p class="login-hero-desc">
+          Welcome! Sign in to consult with 12 AI safety agents, discover 50–70% cheaper generic alternatives, and order direct from licensed local pharmacies with 15-minute delivery.
+        </p>
+
+        <div class="login-trust-highlights">
+          <div class="trust-highlight-item">
+            <span class="trust-icon">🛡️</span>
+            <div>
+              <strong>12 Multi-Agent Clinical Orchestration</strong>
+              <span>Differential diagnosis, allergy denylist enforcement & strict safety vetoes</span>
+            </div>
+          </div>
+          <div class="trust-highlight-item">
+            <span class="trust-icon">💊</span>
+            <div>
+              <strong>Verified Generic Medicine Alternatives</strong>
+              <span>Save 50–70% with lab-certified generic chemical equivalents</span>
+            </div>
+          </div>
+          <div class="trust-highlight-item">
+            <span class="trust-icon">🏪</span>
+            <div>
+              <strong>Neighborhood Independent Chemists</strong>
+              <span>Direct store inventory fulfillment with capped 5–10% fair commissions</span>
+            </div>
+          </div>
+          <div class="trust-highlight-item">
+            <span class="trust-icon">⚡</span>
+            <div>
+              <strong>15-Minute Doorstep Delivery & 1-Tap SOS</strong>
+              <span>Local dispatch and instant 108 emergency trauma ambulance reservation</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="login-security-tag">
+          <span>🔒 AES-256 Encrypted Session</span>
+          <span>•</span>
+          <span>Ayushman Bharat & ISO Health Standards</span>
+        </div>
+      </div>
+
+      <!-- Right Auth Card Form Column -->
+      <div class="login-card-pane">
+        <div class="login-auth-card" id="authModal">
+
+          <div class="auth-modal-header">
+            <div class="auth-modal-title-wrap">
+              <div class="auth-brand-icon">🩺</div>
+              <div>
+                <h3 class="auth-modal-title" id="authModalMainTitle">MediConnect</h3>
+                <p class="auth-modal-sub" id="authModalSubTitle">Hyperlocal Healthcare & Direct Chemist Network</p>
+              </div>
+            </div>
+            <button class="neu-squircle-btn auth-close-btn" id="closeAuthModalBtn" title="Close" style="display: none;">✕</button>
+          </div>
+
+          <!-- ================= STEP 1: ROLE SELECTION PANEL ================= -->
+          <div class="auth-step-panel" id="roleSelectionPanel">
+            <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 12px; padding: 8px 14px; font-size: 12px; font-weight: 700; color: #1e40af; margin-top: 12px; display: flex; align-items: center; justify-content: center; gap: 6px;">
+              <span>👉</span> Step 1 of 2: Select Your Role to Continue
+            </div>
+
+            <div class="role-cards-grid">
+              <!-- Customer Role Card -->
+              <div class="role-card-item selected" id="roleCardCustomer" onclick="selectRole('customer')">
+                <div class="role-card-top">
+                  <div class="role-card-icon">👤</div>
+                  <div>
+                    <div class="role-card-title">Customer / Patient</div>
+                    <span class="role-badge">Patients & Families</span>
+                  </div>
+                  <div class="role-card-radio">✓</div>
+                </div>
+                <div class="role-card-desc">
+                  Consult AI health agents, discover nearest verified chemists, order generic medicines, and access 1-tap SOS emergency services.
+                </div>
+                <ul class="role-card-features">
+                  <li><span style="color:#2563eb;">✓</span> AI multi-agent symptom triage & hospital booking</li>
+                  <li><span style="color:#2563eb;">✓</span> Save 50–70% with verified generic alternatives</li>
+                  <li><span style="color:#2563eb;">✓</span> Direct chat with chemists & 15-min delivery</li>
+                </ul>
+              </div>
+
+              <!-- Pharmacy Owner Role Card -->
+              <div class="role-card-item" id="roleCardOwner" onclick="selectRole('pharmacy_owner')">
+                <div class="role-card-top">
+                  <div class="role-card-icon">🏪</div>
+                  <div>
+                    <div class="role-card-title">Pharmacy Owner / Chemist</div>
+                    <span class="role-badge" style="background:#d1fae5; color:#065f46;">Licensed Chemists</span>
+                  </div>
+                  <div class="role-card-radio"></div>
+                </div>
+                <div class="role-card-desc">
+                  Manage digital store inventory, fulfill patient prescription orders, chat directly with neighborhood customers, and monitor revenue.
+                </div>
+                <ul class="role-card-features">
+                  <li><span style="color:#059669;">✓</span> Live medicine inventory & quick stock updates</li>
+                  <li><span style="color:#059669;">✓</span> Fulfill incoming patient orders with fair commissions</li>
+                  <li><span style="color:#059669;">✓</span> Real-time chat with neighborhood customers</li>
+                </ul>
+              </div>
+            </div>
+
+            <button type="button" class="neu-btn-primary auth-submit-btn" id="continueWithRoleBtn" onclick="continueToCredentials();">
+              <span id="continueRoleBtnText">Continue as Patient</span>
+              <span>➔</span>
+            </button>
+
+            <div class="auth-divider">
+              <span>OR 1-CLICK FAST EVALUATION LOGINS</span>
+            </div>
+
+            <div style="display: flex; gap: 8px;">
+              <button type="button" class="neu-pill-btn fast-demo-btn" style="flex:1;" onclick="loginAsDemoCustomer();" title="Log in as demo patient">
+                <span>👤 Patient Demo</span>
+              </button>
+              <button type="button" class="neu-pill-btn fast-demo-btn" style="flex:1; border-color:#059669; color:#059669;" onclick="loginAsDemoOwner();" title="Log in as demo pharmacy owner">
+                <span>🏪 Owner Demo</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- ================= STEP 2: CREDENTIALS PANEL (LOGIN & SIGN UP) ================= -->
+          <div class="auth-step-panel" id="credentialsPanel" style="display: none;">
+            <!-- Top bar: Change Role & Role Chip -->
+            <div class="role-switch-header">
+              <button type="button" class="btn-change-role" id="backToRoleBtn" onclick="backToRoleSelect();">
+                ← Change Role
+              </button>
+              <div class="active-role-chip" id="currentRoleChip">
+                👤 Patient
+              </div>
+            </div>
+
+            <!-- Segmented Tab Switcher (Login vs Sign Up) -->
+            <div class="auth-tabs-segmented">
+              <button class="auth-seg-btn active" id="tabSwitchLogin" onclick="switchAuthTab('login')">Log In</button>
+              <button class="auth-seg-btn" id="tabSwitchSignup" onclick="switchAuthTab('signup')">Sign Up</button>
+            </div>
+
+            <!-- LOGIN FORM PANEL -->
+            <div class="auth-form-panel" id="loginFormPanel">
+              <form id="loginForm" onsubmit="event.preventDefault(); submitLogin();">
+                <div class="auth-input-group">
+                  <label for="loginIdentifier" id="loginIdentifierLabel">Mobile Number or Email</label>
+                  <div class="auth-input-wrapper">
+                    <input type="text" id="loginIdentifier" class="auth-input" placeholder="+91 98765 43210 or rahul@health.in" value="rahul@health.in" required autocomplete="username" />
+                    <span class="auth-input-icon">📱</span>
+                  </div>
+                </div>
+
+                <div class="auth-input-group">
+                  <label for="loginPassword">Password</label>
+                  <div class="auth-input-wrapper">
+                    <input type="password" id="loginPassword" class="auth-input" placeholder="Enter password" value="Demo123!" required autocomplete="current-password" />
+                    <span class="auth-input-icon toggle-password-btn" id="toggleLoginPasswordBtn" title="Show/Hide Password">👁️</span>
+                  </div>
+                </div>
+
+                <!-- FORGOT PASSWORD LINK -->
+                <div class="forgot-pass-wrapper">
+                  <button type="button" class="forgot-pass-btn" id="forgotPasswordBtn" onclick="openForgotPassword();">
+                    Forgot Password?
+                  </button>
+                </div>
+
+                <button type="submit" class="neu-btn-primary auth-submit-btn" id="doLoginBtn">
+                  <span id="doLoginBtnText">Log In as Patient</span>
+                  <span>➔</span>
+                </button>
+              </form>
+
+              <div class="auth-divider">
+                <span>OR QUICK ACCESS</span>
+              </div>
+
+              <div style="display: flex; gap: 8px;">
+                <button type="button" class="neu-pill-btn fast-demo-btn" style="flex:1;" onclick="loginAsDemoCustomer();">
+                  <span>👤 Patient Demo</span>
+                </button>
+                <button type="button" class="neu-pill-btn fast-demo-btn" style="flex:1; border-color:#059669; color:#059669;" onclick="loginAsDemoOwner();">
+                  <span>🏪 Owner Demo</span>
+                </button>
+              </div>
+
+              <p class="auth-switch-prompt">
+                Don't have an account? <a href="javascript:void(0)" onclick="switchAuthTab('signup')">Create new account</a>
+              </p>
+            </div>
+
+            <!-- SIGN UP FORM PANEL -->
+            <div class="auth-form-panel" id="signupFormPanel" style="display: none;">
+              <form id="signupForm" onsubmit="event.preventDefault(); submitSignup();">
+                <div class="auth-input-group">
+                  <label for="signupName">Full Name *</label>
+                  <div class="auth-input-wrapper">
+                    <input type="text" id="signupName" class="auth-input" placeholder="e.g. Ramesh Gupta" required />
+                    <span class="auth-input-icon">👤</span>
+                  </div>
+                </div>
+
+                <div class="auth-input-row">
+                  <div class="auth-input-group">
+                    <label for="signupContact">Mobile Number *</label>
+                    <div class="auth-input-wrapper">
+                      <input type="tel" id="signupContact" class="auth-input" placeholder="+91 98101 23456" required />
+                      <span class="auth-input-icon">📞</span>
+                    </div>
+                  </div>
+
+                  <div class="auth-input-group">
+                    <label for="signupEmail">Registered Email Address</label>
+                    <div class="auth-input-wrapper">
+                      <input type="email" id="signupEmail" class="auth-input" placeholder="user@health.in" />
+                      <span class="auth-input-icon">✉️</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="auth-input-group" id="signupStoreNameGroup" style="display: none;">
+                  <label for="signupStoreName">Pharmacy / Medical Store Name</label>
+                  <div class="auth-input-wrapper">
+                    <input type="text" id="signupStoreName" class="auth-input" placeholder="e.g. Sanjeevani Local Chemist" />
+                    <span class="auth-input-icon">🏪</span>
+                  </div>
+                </div>
+
+                <div class="auth-input-group">
+                  <label for="signupPassword">Password *</label>
+                  <div class="auth-input-wrapper">
+                    <input type="password" id="signupPassword" class="auth-input" placeholder="Min 4 characters" required autocomplete="new-password" />
+                    <span class="auth-input-icon toggle-password-btn" id="toggleSignupPasswordBtn" title="Show/Hide Password">👁️</span>
+                  </div>
+                </div>
+
+                <div class="auth-input-group">
+                  <label for="signupAddress">Address</label>
+                  <div class="auth-input-wrapper">
+                    <input type="text" id="signupAddress" class="auth-input" placeholder="Flat / House, Sector / Market" value="Sector 15, Gurgaon" />
+                    <span class="auth-input-icon">📍</span>
+                  </div>
+                </div>
+
+                <div class="auth-input-row" id="signupPatientFields">
+                  <div class="auth-input-group">
+                    <label for="signupAllergies">Allergies (comma-separated)</label>
+                    <div class="auth-input-wrapper">
+                      <input type="text" id="signupAllergies" class="auth-input" placeholder="e.g. Aspirin, Penicillin" />
+                      <span class="auth-input-icon">🛡️</span>
+                    </div>
+                  </div>
+
+                  <div class="auth-input-group">
+                    <label for="signupLimit">Auto-Pay Limit (₹)</label>
+                    <div class="auth-input-wrapper">
+                      <input type="number" id="signupLimit" class="auth-input" placeholder="1500" value="1500" min="100" />
+                      <span class="auth-input-icon">🔒</span>
+                    </div>
+                  </div>
+                </div>
+
+                <button type="submit" class="neu-btn-primary auth-submit-btn" id="doSignupBtn">
+                  <span>Register & Launch</span>
+                  <span>➔</span>
+                </button>
+              </form>
+
+              <p class="auth-switch-prompt">
+                Already registered? <a href="javascript:void(0)" onclick="switchAuthTab('login')">Log in to existing account</a>
+              </p>
+            </div>
+          </div>
+
+          <!-- ================= STEP 3A: FORGOT PASSWORD - ENTER EMAIL ================= -->
+          <div class="auth-step-panel" id="forgotEmailPanel" style="display: none;">
+            <button type="button" class="btn-change-role" style="margin-bottom: 12px;" onclick="backToCredentials();">
+              ← Back to Sign In
+            </button>
+
+            <div style="text-align: center; margin-bottom: 16px;">
+              <div style="font-size: 36px; margin-bottom: 8px;">🔐</div>
+              <h4 style="font-size: 18px; font-weight: 800; color: var(--text-title); margin: 0 0 6px;">Reset Your Password</h4>
+              <p style="font-size: 13px; color: var(--text-sub); line-height: 1.4; margin: 0;">
+                Enter your registered email ID. We will dispatch a 6-digit verification code to that email.
+              </p>
+            </div>
+
+            <form onsubmit="event.preventDefault(); submitSendResetCode();">
+              <div class="auth-input-group">
+                <label for="forgotEmailInput">Registered Email Address</label>
+                <div class="auth-input-wrapper">
+                  <input type="email" id="forgotEmailInput" class="auth-input" placeholder="rahul@health.in or owner@sanjeevani.in" required />
+                  <span class="auth-input-icon">✉️</span>
+                </div>
+              </div>
+
+              <button type="submit" class="neu-btn-primary auth-submit-btn" id="sendResetCodeBtn" style="margin-top: 14px;">
+                <span>Send Verification Code</span>
+                <span>➔</span>
+              </button>
+            </form>
+
+            <div style="margin-top: 16px; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 12px; padding: 10px 14px; font-size: 11.5px; color: #1e40af; line-height: 1.4;">
+              <strong>Sample registered emails for testing:</strong><br/>
+              • Patient: <code>rahul@health.in</code><br/>
+              • Pharmacy Owner: <code>owner@sanjeevani.in</code>
+            </div>
+          </div>
+
+          <!-- ================= STEP 3B: FORGOT PASSWORD - ENTER CODE & NEW PASSWORD ================= -->
+          <div class="auth-step-panel" id="forgotCodePanel" style="display: none;">
+            <button type="button" class="btn-change-role" style="margin-bottom: 12px;" onclick="backToForgotEmail();">
+              ← Change Email
+            </button>
+
+            <div style="text-align: center; margin-bottom: 14px;">
+              <div style="font-size: 36px; margin-bottom: 6px;">📨</div>
+              <h4 style="font-size: 18px; font-weight: 800; color: var(--text-title); margin: 0 0 4px;">Enter Verification Code</h4>
+              <p style="font-size: 12.5px; color: var(--text-sub); line-height: 1.4; margin: 0;">
+                Code sent to <strong id="sentCodeEmailLabel" style="color: var(--text-title);"></strong>
+              </p>
+            </div>
+
+            <!-- Dev Code Preview Banner for Instant Local Testing -->
+            <div class="dev-code-banner" id="devCodeBanner" style="display: none;">
+              <div>
+                <span>Code received: </span>
+                <strong id="devCodeValue">123456</strong>
+              </div>
+              <button type="button" class="btn-autofill-code" onclick="autofillResetCode();">Auto-Fill</button>
+            </div>
+
+            <form onsubmit="event.preventDefault(); submitConfirmPasswordReset();">
+              <div class="auth-input-group">
+                <label for="resetCodeInput">6-Digit Verification Code</label>
+                <div class="auth-input-wrapper">
+                  <input type="text" id="resetCodeInput" class="auth-input code-input-box" placeholder="123456" maxlength="6" required />
+                  <span class="auth-input-icon">🔑</span>
+                </div>
+              </div>
+
+              <div class="auth-input-group">
+                <label for="resetNewPassword">New Password</label>
+                <div class="auth-input-wrapper">
+                  <input type="password" id="resetNewPassword" class="auth-input" placeholder="Enter new password (min 4 chars)" required />
+                  <span class="auth-input-icon toggle-password-btn" id="toggleResetNewPassBtn" title="Show/Hide">👁️</span>
+                </div>
+              </div>
+
+              <div class="auth-input-group">
+                <label for="resetConfirmPassword">Confirm New Password</label>
+                <div class="auth-input-wrapper">
+                  <input type="password" id="resetConfirmPassword" class="auth-input" placeholder="Re-enter new password" required />
+                  <span class="auth-input-icon toggle-password-btn" id="toggleResetConfirmPassBtn" title="Show/Hide">👁️</span>
+                </div>
+              </div>
+
+              <button type="submit" class="neu-btn-primary auth-submit-btn" id="confirmResetBtn" style="margin-top: 14px; background: #059669; box-shadow: 0 8px 20px rgba(5, 150, 105, 0.3);">
+                <span>Verify Code & Reset Password</span>
+                <span>➔</span>
+              </button>
+            </form>
+
+            <div style="text-align: center; margin-top: 12px;">
+              <button type="button" style="background: none; border: none; font-size: 12px; color: var(--accent-blue-1); font-weight: 700; cursor: pointer;" onclick="submitSendResetCode();">
+                Resend Verification Code
+              </button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ==============================================
+       MAIN APPLICATION DASHBOARD (REVEALED UPON SUCCESSFUL LOGIN)
+  =============================================== -->
+  <main class="app-container" id="dashboardAppView" style="display: none;">
+    
+    <!-- TOP SYSTEM BRAND BAR WITH SQUIRCLE NAVIGATION & SAFETY GUARD TOGGLE -->
+    <header class="brand-header">
+      <div class="brand-identity">
+        <div class="brand-icon-box">🩺</div>
+        <div class="brand-title-wrap">
+          <h1>MediConnect</h1>
+          <p>AI Hyperlocal Health Assistant & Pharmacy</p>
+        </div>
+      </div>
+
+      <!-- Top Squircle Navigation (Triage, Pharmacies, Orders, Health Card, Emergency) -->
+      <nav class="top-squircle-nav" aria-label="Main Navigation">
+        <button class="neu-squircle-btn active" id="tabNavHealth" title="AI Health Triage & Consult">
+          <svg viewBox="0 0 24 24"><path d="M10.5 13H8v-3h2.5V7.5h3V10H16v3h-2.5v2.5h-3V13zM12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/></svg>
+          <span>Triage</span>
+        </button>
+        <button class="neu-squircle-btn" id="tabNavStores" title="Local Medical Stores">
+          <svg viewBox="0 0 24 24"><path d="M4 4h16a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zm0 8v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8H4zm7 2h2v2h2v2h-2v2h-2v-2H9v-2h2v-2z"/></svg>
+          <span>Pharmacies</span>
+        </button>
+        <button class="neu-squircle-btn" id="tabNavOrders" title="My Orders & Appointments">
+          <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-2 10H7v-2h10v2zm0-4H7V7h10v2zm-4 8H7v-2h6v2z"/></svg>
+          <span>Orders</span>
+        </button>
+        <button class="neu-squircle-btn" id="tabNavCard" title="My Safe Health Card">
+          <svg viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-1 6h2v2h-2V7zm0 4h2v6h-2v-6z"/></svg>
+          <span>Health Card</span>
+        </button>
+        <button class="neu-squircle-btn emergency-nav-btn" id="tabNavEmergency" title="Emergency Ambulance SOS">
+          <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+          <span>SOS</span>
+        </button>
+      </nav>
+
+      <!-- Right Header Actions: Guard Toggle, User Account (Profile/Sign Out), Emergency SOS -->
+      <div class="brand-header-actions">
+        <div class="neu-toggle-wrapper" title="Toggle AI Safety Guardrails Mode">
+          <span class="neu-toggle-label">Guard</span>
+          <div class="neu-toggle active" id="systemToggleBtn">
+            <div class="neu-toggle-track">
+              <span class="neu-toggle-text off-text">OFF</span>
+              <span class="neu-toggle-text on-text">ON</span>
+            </div>
+            <div class="neu-toggle-knob">
+              <span></span>
+              <span></span>
+              <span></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- User Profile Pill Button -->
+        <button class="neu-pill-btn user-account-pill" id="userAccountBtn" title="Account Details & Profile">
+          <span class="account-avatar-icon" id="headerAvatarIcon">👤</span>
+          <span id="headerAccountLabel" style="font-weight: 700;">Account</span>
+        </button>
+
+        <!-- Direct Sign Out Button in Header -->
+        <button class="neu-pill-btn logout-top-btn" id="headerLogoutBtn" title="Sign Out & Return to Login Screen">
+          <span style="font-size: 14px;">🚪</span>
+          <span style="font-weight: 700; color: var(--text-sub);">Sign Out</span>
+        </button>
+
+        <!-- Emergency SOS Button -->
+        <button class="neu-pill-btn sos-top-btn" id="sosHeaderBtn" title="Call Emergency Ambulance">
+          <span style="font-size: 16px;">🚨</span>
+          <span style="color: var(--status-danger); font-weight: 800;">Emergency</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- LIVE ORDER TRACKER BANNER (Shows when medicine is ordered) -->
+    <div class="live-order-tracker" id="liveOrderTracker" style="display: none;">
+      <div class="tracker-header">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <div class="live-pulse-dot"></div>
+          <strong style="color: var(--text-title); font-size: 15px;">Medicine Out for Delivery (~15 mins)</strong>
+        </div>
+        <button class="neu-squircle-btn" id="closeTrackerBtn" style="width: 32px; height: 32px; border-radius: 10px; font-size: 13px;">✕</button>
+      </div>
+      <div style="display: flex; justify-content: space-between; align-items: baseline;">
+        <div>
+          <span id="trackerMedName" style="font-size: 15px; font-weight: 800; color: var(--text-title);">Paracetamol 500mg</span>
+          <span id="trackerShopName" style="font-size: 12px; color: var(--text-muted); margin-left: 6px;">from Sanjeevani Chemist</span>
+        </div>
+        <span id="trackerAmount" style="font-size: 14px; font-weight: 800; color: var(--status-green);">₹18 Paid</span>
+      </div>
+      <div class="tracker-progress-bar">
+        <div class="progress-fill"></div>
+      </div>
+      <div class="tracker-steps">
+        <span>✓ Ordered</span>
+        <span class="active">● Packed</span>
+        <span>🛵 Delivery</span>
+      </div>
+      <button class="neu-btn-primary" id="callRunnerBtn" style="padding: 10px 18px; font-size: 13px;">
+        📞 Call Chemist (+91 98101 23456)
+      </button>
+    </div>
+
+    <!-- PATIENT PROFILE & SAFETY SHIELD BADGE -->
+    <div class="neu-patient-banner">
+      <div class="patient-info">
+        <div class="patient-avatar">👤</div>
+        <div>
+          <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+            <h3 class="patient-name" id="headerUserName">Rahul Sharma</h3>
+            <button class="neu-badge-btn" id="openProfileBtn" title="View & Edit My Account Details">👤 View Profile</button>
+            <button class="neu-badge-btn" id="switchUserBtn" title="Switch or Log into another account">Switch Account</button>
+          </div>
+          <div class="patient-loc-row" style="display: flex; align-items: center; gap: 8px; margin-top: 4px; flex-wrap: wrap;">
+            <p class="patient-subtext" id="headerUserSubtext" style="margin: 0;">📍 Sector 15, Gurgaon</p>
+            <button class="location-change-link" id="openLocationModalBtn" title="Auto-Detect via GPS/Maps or Enter Address Manually">Change Location ▾</button>
+          </div>
+        </div>
+      </div>
+      <div class="patient-meta-badges">
+        <div class="allergy-shield-pill" id="headerAllergyShield" title="Encrypted allergy guardrail active">
+          🛡️ Guard: Aspirin Blocked
+        </div>
+        <div class="spending-cap-pill" id="headerSpendingCap" title="Server-side payment limit protection">
+          🔒 Auto-Pay Cap: ₹1,500
+        </div>
+        <button class="neu-pill-btn logout-mini-btn" id="logoutBtn" title="Log out of current patient session">
+          🚪 Logout
+        </button>
+      </div>
+    </div>
+
+    <!-- ==========================================================
+         PHARMACY OWNER DASHBOARD (Shown when role == pharmacy_owner)
+    ========================================================== -->
+    <section class="neu-card owner-dashboard-view" id="ownerDashboardSection" style="display: none;">
+      <div class="owner-dashboard-header">
+        <div>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="font-size: 24px;">🏪</span>
+            <h2 style="font-size: 20px; font-weight: 900; color: #0f172a; margin: 0;" id="ownerStoreTitle">Sanjeevani Local Chemist</h2>
+            <span style="background: #d1fae5; color: #065f46; font-size: 11px; font-weight: 800; padding: 2px 8px; border-radius: 9999px;">LICENSED CHEMIST</span>
+          </div>
+          <p style="font-size: 13px; color: #64748b; margin: 4px 0 0;" id="ownerStoreSubtitle">Shop #4, Sector 15 Market, Gurgaon • Partner Store</p>
+        </div>
+        <div style="display: flex; gap: 8px;">
+          <button class="neu-pill-btn" onclick="switchToPatientMode();" style="font-size: 12px; font-weight: 700;">
+            <span>🔄 Switch to Patient View</span>
+          </button>
+          <button class="neu-pill-btn" onclick="logoutUser();" style="font-size: 12px; font-weight: 700; color: #dc2626;">
+            <span>🚪 Sign Out</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Key Metrics Row -->
+      <div class="owner-metrics-row">
+        <div class="owner-metric-card">
+          <h4>📦 Medicine Catalog</h4>
+          <div class="metric-val" id="ownerStockCount">68 Items</div>
+          <span style="font-size: 11px; color: #059669; font-weight: 600;">✓ In-stock & Active</span>
+        </div>
+        <div class="owner-metric-card">
+          <h4>🚚 Pending Orders</h4>
+          <div class="metric-val" id="ownerPendingOrdersCount">1 Active</div>
+          <span style="font-size: 11px; color: #2563eb; font-weight: 600;">⚡ 15-min delivery target</span>
+        </div>
+        <div class="owner-metric-card">
+          <h4>💰 Today's Revenue</h4>
+          <div class="metric-val">₹4,280</div>
+          <span style="font-size: 11px; color: #059669; font-weight: 600;">Commission capped at 6.5%</span>
+        </div>
+      </div>
+
+      <!-- Quick Inventory Stock Adjuster -->
+      <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 18px; padding: 18px; margin-bottom: 20px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+          <h3 style="font-size: 15px; font-weight: 800; color: #0f172a; margin: 0;">⚡ Fast Inventory Stock Adjuster</h3>
+          <span style="font-size: 12px; color: #64748b;">Live updates sync directly to AI Triage</span>
+        </div>
+        <div id="ownerInventoryList" style="display: flex; flex-direction: column; gap: 8px;">
+          <!-- Dynamically populated stock items -->
+        </div>
+      </div>
+
+      <!-- Owner Immediate Emergency SOS & Nearest Hospital ER Booking Card -->
+      <div class="owner-emergency-banner-box" id="ownerEmergencyBannerBox">
+        <div class="owner-emergency-content">
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <span style="font-size: 32px;">🚨</span>
+            <div>
+              <h3 style="font-size: 16px; font-weight: 800; color: #991b1b; margin: 0;">Owner Immediate Emergency Assistance & Hospital ER Pass</h3>
+              <p style="font-size: 12.5px; color: #7f1d1d; margin: 3px 0 0;">If having a medical emergency at your shop, call ambulance (108) immediately to your store & auto-book trauma ER admission at nearest hospital.</p>
+            </div>
+          </div>
+          <button class="owner-sos-btn" id="ownerEmergencyBtn" onclick="triggerAmbulanceSOS();" title="Dispatch ambulance (108) to your shop and auto-book nearest hospital ER">
+            <span>🚨 Call Ambulance (108) & Book ER</span>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==============================================
+         INTERACTIVE WORKSPACE PANELS (TRIAGE, SHOPS, HEALTH CARD, EMERGENCY)
+    =============================================== -->
+    <section class="triage-workspace">
+
+      <!-- View 1: Health Check / Triage (Default) -->
+      <div class="tab-view active" id="viewHealthCheck">
+        
+        <!-- Voice & Quick Symptom Input Console -->
+        <div class="neu-card voice-triage-panel">
+          <div class="voice-panel-content">
+            <h3 class="voice-title">Where does it hurt? (क्या तकलीफ है?)</h3>
+            <p class="voice-desc">Tap the 3D microphone to speak naturally, or pick a common health problem below:</p>
+            
+            <button class="neu-mic-button" id="voiceRecordBtn" title="Press and speak your symptoms">
+              <span class="mic-icon">🎙️</span>
+              <span class="mic-label" id="micStatusText">Speak Symptoms</span>
+            </button>
+          </div>
+
+          <!-- 1-Tap Problem Chips -->
+          <div class="problem-chips-grid">
+            <button class="problem-chip-btn" id="presetAllergy">
+              <div class="prob-emoji">🤕</div>
+              <div class="prob-text">
+                <strong>Headache / Body Pain</strong>
+                <span>Aspirin-safe pain relief</span>
+              </div>
+            </button>
+            
+            <button class="problem-chip-btn" id="presetCold">
+              <div class="prob-emoji">🤧</div>
+              <div class="prob-text">
+                <strong>Cold & Sore Throat</strong>
+                <span>Warm remedies & steam</span>
+              </div>
+            </button>
+            
+            <button class="problem-chip-btn" id="presetAcidity">
+              <div class="prob-emoji">🤢</div>
+              <div class="prob-text">
+                <strong>Stomach Gas & Acidity</strong>
+                <span>Instant antacid relief</span>
+              </div>
+            </button>
+            
+            <button class="problem-chip-btn emergency-preset" id="presetEmergency">
+              <div class="prob-emoji">🚨</div>
+              <div class="prob-text">
+                <strong style="color: var(--status-danger);">Severe Chest Pain</strong>
+                <span>Immediate Ambulance SOS</span>
+              </div>
+            </button>
+          </div>
+        </div>
+
+        <!-- Reassuring Progress Bar -->
+        <div class="friendly-progress" id="friendlyProgress" style="display: none;">
+          <div class="spinner-dot"></div>
+          <span id="friendlyProgressText">Reviewing symptoms against safe health records...</span>
+        </div>
+
+        <!-- Conversation & Triage Chat Stream -->
+        <div class="chat-stream" id="chatStream"></div>
+
+        <!-- Doctor Advice & Medicine Card -->
+        <div class="doctor-advice-card" id="doctorAdviceCard" style="display: none;"></div>
+
+        <!-- Nearby Chemist Recommendations -->
+        <div class="chemist-shops-box" id="chemistShopsBox" style="display: none;">
+          <div class="box-header">
+            <h3>🏪 Trusted Nearby Medical Stores</h3>
+            <span class="comfort-badge">Best Local Prices</span>
+          </div>
+          <p style="font-size: 13px; color: var(--text-sub);">Chemists with confirmed stock near Sector 15:</p>
+          <div class="chemist-list" id="chemistList"></div>
+        </div>
+
+        <!-- Interactive Typing Input Bar -->
+        <footer class="neu-chat-bar" id="inputFooterBar" style="margin-top: 14px;">
+          <input 
+            type="text" 
+            id="symptomInput" 
+            class="neu-chat-input" 
+            placeholder="Describe health issue: e.g., 'I have a headache since morning'..." 
+            aria-label="Describe health issue"
+          />
+          <button class="neu-send-btn" id="sendBtn" title="Ask Assistant">
+            <span>Consult AI</span>
+            <span>➔</span>
+          </button>
+        </footer>
+
+      </div>
+
+      <!-- View 2: Nearby Medical Stores Tab -->
+      <div class="tab-view" id="viewStores" style="display: none;">
+        <div class="neu-card">
+          <h2 style="font-size: 20px; color: var(--text-title); margin-bottom: 4px; font-weight: 800;">🏪 Verified Neighborhood Chemists</h2>
+          <p style="font-size: 13.5px; color: var(--text-sub); margin-bottom: 20px;">Order genuine generic medicines with verified stock, 5–10% capped commissions, and direct chemist chat.</p>
+          
+          <div class="neu-chat-bar" style="margin-bottom: 20px;">
+            <input type="text" id="storeSearchInput" class="neu-chat-input" placeholder="Search medicine (e.g. Paracetamol, Cetirizine, Omeprazole)..." />
+            <button class="neu-send-btn" id="storeSearchBtn">Search Stores</button>
+          </div>
+
+          <div class="chemist-list" id="fullChemistList"></div>
+        </div>
+      </div>
+
+      <!-- View: Orders & Booked Appointments Tab -->
+      <div class="tab-view" id="viewOrders" style="display: none;">
+        <div class="neu-card">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px;">
+            <div>
+              <h2 style="font-size: 20px; color: var(--text-title); margin-bottom: 4px; font-weight: 800;">📦 Orders & Booked Appointments</h2>
+              <p style="font-size: 13.5px; color: var(--text-sub);">Track your previous ordered medicines and booked hospital ER admission passes.</p>
+            </div>
+            <button class="neu-pill-btn" id="refreshOrdersBtn" style="padding: 8px 18px; font-size: 13px;">
+              🔄 Refresh List
+            </button>
+          </div>
+
+          <!-- Segmented Filter between Medicines and Appointments -->
+          <div class="orders-segmented-switch">
+            <button class="orders-seg-btn active" id="ordersTabMedsBtn">
+              <span>📦 Ordered Medicines (<strong id="ordersCountBadge">0</strong>)</span>
+            </button>
+            <button class="orders-seg-btn" id="ordersTabApptsBtn">
+              <span>🏥 Booked Appointments (<strong id="apptsCountBadge">0</strong>)</span>
+            </button>
+          </div>
+
+          <!-- Section 1: Previous Ordered Medicines -->
+          <div id="panelOrderedMeds" class="orders-panel">
+            <div id="userOrdersList" class="orders-list-grid">
+              <div style="color: var(--text-sub); padding: 20px; text-align: center;">Loading your orders...</div>
+            </div>
+          </div>
+
+          <!-- Section 2: Booked Hospital Appointments -->
+          <div id="panelBookedAppts" class="orders-panel" style="display: none;">
+            <div id="userAppointmentsList" class="appointments-list-grid">
+              <div style="color: var(--text-sub); padding: 20px; text-align: center;">Loading your appointments...</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- View 3: My Health Card Tab -->
+      <div class="tab-view" id="viewHealthCard" style="display: none;">
+        <div class="neu-card">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 10px;">
+            <div>
+              <h2 style="font-size: 20px; color: var(--text-title); margin-bottom: 4px; font-weight: 800;">📋 Safe Health Profile & Guardrails</h2>
+              <p style="font-size: 13.5px; color: var(--text-sub);">AES-256 encrypted medical records, allergy denylist, and server-side payment protection limit.</p>
+            </div>
+            <button class="neu-pill-btn" id="healthCardAuthActionBtn" style="padding: 6px 16px; font-size: 13px;">
+              👤 Switch User / Login
+            </button>
+          </div>
+          
+          <div class="health-card-container" id="healthCardDetails"></div>
+        </div>
+      </div>
+
+      <!-- View 4: Emergency Tab -->
+      <div class="tab-view" id="viewEmergency" style="display: none;">
+        <div class="emergency-full-card">
+          <div class="big-sos-icon">🚨</div>
+          <h2 style="color: var(--text-title); font-size: 24px; font-weight: 800;">Immediate Emergency Ambulance SOS</h2>
+          <p style="font-size: 14.5px; color: var(--text-sub); max-width: 520px; line-height: 1.6;">
+            Pressing the button below instantly notifies the nearest ambulance, auto-reserves a trauma ER bay token at the closest hospital, and broadcasts your live GPS coordinates to family.
+          </p>
+          
+          <button class="emergency-main-trigger" id="emergencyDirectBtn">
+            DISPATCH AMBULANCE NOW
+          </button>
+
+          <div class="emergency-dispatched-box" id="emergencyDispatchedBox" style="display: none; width: 100%; max-width: 460px;">
+            <div class="auto-book-pill">AMBULANCE DISPATCHED</div>
+            <p style="margin-top: 4px;">Ambulance Booking: <strong id="sosBookingId">AMB-7821</strong> (~7 mins arrival)</p>
+          </div>
+        </div>
+      </div>
+
+    </section>
+  </main>
+
+
+  <!-- Big Clear SOS Confirmation Modal -->
+  <div class="easy-modal" id="sosModal" style="display: none;">
+    <div class="easy-modal-content">
+      <div style="font-size: 44px;">🚨</div>
+      <h2 style="color: var(--text-title); font-size: 20px; font-weight: 800;">Do you need an Ambulance?</h2>
+      <p style="font-size: 14px; color: var(--text-sub); line-height: 1.5;">
+        We will immediately dispatch the nearest available ambulance to Sector 15 and reserve an emergency ER bay.
+      </p>
+      
+      <div class="modal-btn-row">
+        <button class="btn-back" id="cancelSosBtn">Cancel</button>
+        <button class="btn-confirm-sos" id="confirmSosBtn">YES, DISPATCH NOW</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==============================================
+       LOCATION SELECTOR MODAL (GPS / GOOGLE MAPS & MANUAL ENTRY)
+  =============================================== -->
+  <div class="easy-modal" id="locationModal" style="display: none;">
+    <div class="easy-modal-content location-modal-card">
+      <div class="auth-modal-header">
+        <div class="auth-modal-title-wrap">
+          <div class="auth-brand-icon">📍</div>
+          <div>
+            <h3 class="auth-modal-title">Select Location</h3>
+            <p class="auth-modal-sub">For medicine delivery and hospital discovery</p>
+          </div>
+        </div>
+        <button class="neu-squircle-btn auth-close-btn" id="closeLocationModalBtn" title="Close">✕</button>
+      </div>
+
+      <div class="location-modal-body">
+        <!-- Option 1: Auto GPS / Maps Detection -->
+        <div class="location-option-card">
+          <div class="loc-opt-header">
+            <span class="loc-opt-icon">🛰️</span>
+            <div>
+              <strong style="color: var(--text-title); font-size: 15px;">Auto-Detect Current Location</strong>
+              <p style="font-size: 12.5px; color: var(--text-sub);">Use GPS & Geolocation to pinpoint your exact coordinates</p>
+            </div>
+          </div>
+          <button class="neu-btn-primary" id="btnAutoDetectGps" style="width: 100%; padding: 12px; font-size: 13.5px; margin-top: 10px;">
+            <span>📍 Detect My Location via GPS</span>
+          </button>
+          <div id="gpsDetectStatus" class="gps-status-msg" style="display: none;"></div>
+        </div>
+
+        <div class="auth-divider" style="margin: 18px 0;">
+          <span>OR ENTER MANUALLY</span>
+        </div>
+
+        <!-- Option 2: Manual Location Entry -->
+        <form id="manualLocationForm" onsubmit="event.preventDefault(); saveManualLocation();">
+          <div class="auth-input-group" style="margin-bottom: 12px;">
+            <label for="manualAddressInput">Delivery Address / Street / Society</label>
+            <div class="auth-input-wrapper">
+              <input type="text" id="manualAddressInput" class="auth-input" placeholder="e.g. Flat 302, Palm Heights, Sector 15" required />
+              <span class="auth-input-icon">🏠</span>
+            </div>
+          </div>
+
+          <div class="auth-input-row" style="margin-bottom: 16px;">
+            <div class="auth-input-group">
+              <label for="manualCityInput">City / Sector</label>
+              <div class="auth-input-wrapper">
+                <input type="text" id="manualCityInput" class="auth-input" placeholder="Gurgaon" value="Gurgaon" />
+                <span class="auth-input-icon">🏙️</span>
+              </div>
+            </div>
+            <div class="auth-input-group">
+              <label for="manualPincodeInput">PIN Code</label>
+              <div class="auth-input-wrapper">
+                <input type="text" id="manualPincodeInput" class="auth-input" placeholder="122001" value="122001" />
+                <span class="auth-input-icon">📮</span>
+              </div>
+            </div>
+          </div>
+
+          <button type="submit" class="neu-btn-primary" id="btnSaveManualLocation" style="width: 100%; padding: 12px; font-size: 14px;">
+            <span>Save Delivery Location</span>
+            <span>➔</span>
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==============================================
+       PATIENT PROFILE MODAL (ALL ACCOUNT CREATION DETAILS)
+  =============================================== -->
+  <div class="easy-modal" id="profileModal" style="display: none;">
+    <div class="easy-modal-content profile-modal-card">
+      <div class="auth-modal-header">
+        <div class="auth-modal-title-wrap">
+          <div class="auth-brand-icon">👤</div>
+          <div>
+            <h3 class="auth-modal-title">Patient Profile</h3>
+            <p class="auth-modal-sub">Details entered when your account was created</p>
+          </div>
+        </div>
+        <button class="neu-squircle-btn auth-close-btn" id="closeProfileModalBtn" title="Close">✕</button>
+      </div>
+
+      <div class="profile-modal-body">
+        <!-- View Mode: Readonly details -->
+        <div class="profile-view-card" id="profileViewCard">
+          <div class="profile-field-row">
+            <span class="prof-label">Full Name</span>
+            <strong class="prof-value" id="profileViewName">Loading...</strong>
+          </div>
+          <div class="profile-field-row">
+            <span class="prof-label">Mobile Number</span>
+            <strong class="prof-value" id="profileViewPhone">Loading...</strong>
+          </div>
+          <div class="profile-field-row">
+            <span class="prof-label">Email Address</span>
+            <strong class="prof-value" id="profileViewEmail">Loading...</strong>
+          </div>
+          <div class="profile-field-row">
+            <span class="prof-label">Registered Delivery Address</span>
+            <strong class="prof-value" id="profileViewAddress">Loading...</strong>
+          </div>
+          <div class="profile-field-row">
+            <span class="prof-label">GPS Coordinates</span>
+            <strong class="prof-value" id="profileViewCoords" style="font-family: monospace; font-size: 13px;">28.6139° N, 77.2090° E</strong>
+          </div>
+          <div class="profile-field-row">
+            <span class="prof-label">Encrypted Allergies (At Rest)</span>
+            <div id="profileViewAllergies" class="prof-allergies-box">
+              <span class="prof-allergy-tag">🛡️ Aspirin Blocked</span>
+            </div>
+          </div>
+          <div class="profile-field-row">
+            <span class="prof-label">Auto-Pay Spending Cap</span>
+            <strong class="prof-value" id="profileViewLimit" style="color: var(--status-green);">₹1,500 per transaction</strong>
+          </div>
+          <div class="profile-field-row">
+            <span class="prof-label">Emergency SOS Contacts</span>
+            <div id="profileViewContacts" class="prof-contacts-box">
+              <span class="prof-contact-tag">📞 Primary Emergency Alert</span>
+            </div>
+          </div>
+          <div class="profile-field-row">
+            <span class="prof-label">Account Created</span>
+            <span class="prof-value" id="profileViewCreatedAt" style="font-size: 12px; color: var(--text-sub);">Active</span>
+          </div>
+
+          <div style="display: flex; gap: 12px; margin-top: 20px;">
+            <button class="neu-btn-primary" id="btnToggleEditProfile" style="flex: 1; padding: 12px; font-size: 13.5px;">
+              ✏️ Edit Profile Details
+            </button>
+          </div>
+        </div>
+
+        <!-- Edit Mode: Update Details Form -->
+        <form id="profileEditForm" style="display: none;" onsubmit="event.preventDefault(); saveProfileUpdates();">
+          <div class="auth-input-group" style="margin-bottom: 12px;">
+            <label for="editProfileName">Full Name</label>
+            <div class="auth-input-wrapper">
+              <input type="text" id="editProfileName" class="auth-input" required />
+              <span class="auth-input-icon">👤</span>
+            </div>
+          </div>
+
+          <div class="auth-input-row" style="margin-bottom: 12px;">
+            <div class="auth-input-group">
+              <label for="editProfileContact">Mobile Number</label>
+              <div class="auth-input-wrapper">
+                <input type="tel" id="editProfileContact" class="auth-input" required />
+                <span class="auth-input-icon">📞</span>
+              </div>
+            </div>
+            <div class="auth-input-group">
+              <label for="editProfileEmail">Email Address</label>
+              <div class="auth-input-wrapper">
+                <input type="email" id="editProfileEmail" class="auth-input" required />
+                <span class="auth-input-icon">✉️</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="auth-input-group" style="margin-bottom: 12px;">
+            <label for="editProfileAddress">Delivery Address</label>
+            <div class="auth-input-wrapper">
+              <input type="text" id="editProfileAddress" class="auth-input" required />
+              <span class="auth-input-icon">📍</span>
+            </div>
+          </div>
+
+          <div class="auth-input-group" style="margin-bottom: 16px;">
+            <label for="editProfileLimit">Auto-Pay Spending Cap (₹)</label>
+            <div class="auth-input-wrapper">
+              <input type="number" id="editProfileLimit" class="auth-input" min="100" required />
+              <span class="auth-input-icon">🔒</span>
+            </div>
+          </div>
+
+          <div style="display: flex; gap: 12px;">
+            <button type="button" class="btn-back" id="btnCancelEditProfile" style="flex: 1;">Cancel</button>
+            <button type="submit" class="neu-btn-primary" id="btnSaveProfileUpdates" style="flex: 1.5; padding: 12px;">
+              ✓ Save Changes
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- In-App Notification Toast Banner -->
+  <div class="toast-notification" id="toastNotification" style="display: none;">
+    <span class="toast-icon" id="toastIcon">✅</span>
+    <span class="toast-message" id="toastMessage">Order Placed Successfully!</span>
+  </div>
+
+  <script src="app.js?v=2.1"></script>
+</body>
+</html>
