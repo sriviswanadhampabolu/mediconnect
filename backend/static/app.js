@@ -1789,44 +1789,79 @@ window.loginAsDemoCustomer = async function() {
   showProgress("Logging in as Patient Rahul Sharma...");
   try {
     const res = await fetch(`${API_BASE}/auth/demo-login`, { method: "POST" });
-    const data = await res.json();
-    hideProgress();
-
-    if (res.ok && data.success) {
-      currentUser = data.user;
-      currentUserId = data.user.id;
-      localStorage.setItem("mediconnect_user", JSON.stringify(currentUser));
-      updateUserUI();
-      showDashboardView();
-      showToast("Logged in as Rahul Sharma (Demo Patient)!", "⚡");
-      loadHealthCard();
+    if (res.ok) {
+      const data = await res.json();
+      if (data.success && data.user) {
+        currentUser = data.user;
+        currentUserId = data.user.id;
+        localStorage.setItem("mediconnect_user", JSON.stringify(currentUser));
+        hideProgress();
+        updateUserUI();
+        showDashboardView();
+        showToast("Logged in as Rahul Sharma (Demo Patient)!", "⚡");
+        loadHealthCard();
+        return;
+      }
     }
-  } catch (e) {
-    hideProgress();
-    showToast("Demo login failed.", "⚠️");
-  }
+  } catch (e) {}
+
+  // Instant Fallback (Guaranteed to work on GitHub Pages without server)
+  hideProgress();
+  currentUser = {
+    id: "usr-sample-001",
+    name: "Rahul Sharma",
+    email: "rahul@health.in",
+    role: "customer",
+    address: "Sector 15, Gurgaon",
+    emergency_contacts: [
+      { name: "Priya Sharma (Spouse)", phone: "+91 98111 22334", relation: "Spouse" }
+    ],
+    allergies: ["Aspirin", "Penicillin"]
+  };
+  currentUserId = currentUser.id;
+  localStorage.setItem("mediconnect_user", JSON.stringify(currentUser));
+  updateUserUI();
+  showDashboardView();
+  showToast("Logged in as Rahul Sharma (Demo Patient)!", "⚡");
+  loadHealthCard();
 };
 
 window.loginAsDemoOwner = async function() {
   showProgress("Logging in as Pharmacy Owner Ramesh Gupta...");
   try {
     const res = await fetch(`${API_BASE}/auth/owner-demo-login`, { method: "POST" });
-    const data = await res.json();
-    hideProgress();
-
-    if (res.ok && data.success) {
-      currentUser = data.user;
-      currentUserId = data.user.id;
-      localStorage.setItem("mediconnect_user", JSON.stringify(currentUser));
-      updateUserUI();
-      showDashboardView();
-      showToast("Logged in as Ramesh Gupta (Store Owner)!", "🏪");
-      loadOwnerDashboard();
+    if (res.ok) {
+      const data = await res.json();
+      if (data.success && data.user) {
+        currentUser = data.user;
+        currentUserId = data.user.id;
+        localStorage.setItem("mediconnect_user", JSON.stringify(currentUser));
+        hideProgress();
+        updateUserUI();
+        showDashboardView();
+        showToast("Logged in as Ramesh Gupta (Store Owner)!", "🏪");
+        loadOwnerDashboard();
+        return;
+      }
     }
-  } catch (e) {
-    hideProgress();
-    showToast("Demo owner login failed.", "⚠️");
-  }
+  } catch (e) {}
+
+  // Instant Fallback (Guaranteed to work on GitHub Pages without server)
+  hideProgress();
+  currentUser = {
+    id: "usr-owner-001",
+    name: "Ramesh Gupta",
+    email: "owner@sanjeevani.in",
+    role: "pharmacy_owner",
+    address: "Shop #4, Sector 15 Market, Gurgaon",
+    store_name: "Sanjeevani Local Chemist"
+  };
+  currentUserId = currentUser.id;
+  localStorage.setItem("mediconnect_user", JSON.stringify(currentUser));
+  updateUserUI();
+  showDashboardView();
+  showToast("Logged in as Ramesh Gupta (Store Owner)!", "🏪");
+  loadOwnerDashboard();
 };
 
 // Logout user
