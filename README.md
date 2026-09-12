@@ -40,12 +40,16 @@ Connecting patients directly with small neighborhood medical stores, eliminating
 ### 📺 Watch the MediConnect Platform Walkthrough
 
 [![Watch Demo on Google Drive](https://img.shields.io/badge/▶️_Watch_Demo_Video_(Google_Drive)-10b981?style=for-the-badge&logo=googledrive&logoColor=white)](https://drive.google.com/file/d/1jobx6Bnvkb71F-RABgP7Vxi0EOUVZ62X/view?usp=drive_link)
+[![Direct Download MP4](https://img.shields.io/badge/⬇️_Direct_Download_Video-2563eb?style=for-the-badge&logo=googlechrome&logoColor=white)](https://drive.google.com/uc?export=download&id=1jobx6Bnvkb71F-RABgP7Vxi0EOUVZ62X)
 
 <br />
 
-👉 **[Click Here to Open and Watch the Demo Video on Google Drive](https://drive.google.com/file/d/1jobx6Bnvkb71F-RABgP7Vxi0EOUVZ62X/view?usp=drive_link)** 👈
+👉 **[Click Here to Stream on Google Drive](https://drive.google.com/file/d/1jobx6Bnvkb71F-RABgP7Vxi0EOUVZ62X/view?usp=drive_link)** • **[⬇️ Direct Download MP4](https://drive.google.com/uc?export=download&id=1jobx6Bnvkb71F-RABgP7Vxi0EOUVZ62X)** 👈
 
 <br />
+
+> [!TIP]
+> **Playback Note:** If Google Drive displays *"This video file is still being processed for playback"*, simply click the blue **"Download"** button on Google Drive (or use the Direct Download link above) to play it immediately while Google finishes server-side encoding.
 
 > [!NOTE]
 > **Video Walkthrough Highlights:**
