@@ -200,7 +200,7 @@ def init_db_and_seed():
         if not owner_user:
             owner_user = User(
                 id="usr-owner-001",
-                name="Ramesh Gupta (Store Owner)",
+                name="Ramesh Gupta",
                 contact="+91 98101 23456",
                 email="owner@sanjeevani.in",
                 password_hash=hash_password("Demo123!"),
@@ -213,6 +213,7 @@ def init_db_and_seed():
             )
             db.add(owner_user)
         else:
+            owner_user.name = "Ramesh Gupta"
             owner_user.role = "pharmacy_owner"
             owner_user.store_id = "pharm-001"
             owner_user.email = "owner@sanjeevani.in"

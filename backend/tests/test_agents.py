@@ -193,3 +193,30 @@ def test_user_profile_location_update():
     assert data["longitude"] == 77.0266
     assert data["email"] == "rahul@health.in"
     assert "created_at" in data
+
+@pytest.mark.asyncio
+async def test_indian_language_symptom_triage():
+    """Verify Indian language / Hinglish symptoms (bukhar, sir dard, sardi) correctly trigger triage."""
+    from backend.agents.symptom_agent import symptom_agent_node
+    
+    # Test Hindi/Hinglish fever symptom
+    state_fever = AgentState(
+        user_id=SAMPLE_USER_ID,
+        message="Mujhe kal raat se tez bukhar hai aur badan dard ho raha hai",
+        latitude=28.4595,
+        longitude=77.0266
+    )
+    res_fever = symptom_agent_node(state_fever)
+    assert res_fever.candidate_condition is not None
+    assert "Fever" in res_fever.candidate_condition or "Strain" in res_fever.candidate_condition
+    
+    # Test Headache symptom in Indian language
+    state_headache = AgentState(
+        user_id=SAMPLE_USER_ID,
+        message="Bahut tez sir dard aur matha dard hai subah se",
+        latitude=28.4595,
+        longitude=77.0266
+    )
+    res_headache = symptom_agent_node(state_headache)
+    assert res_headache.candidate_condition is not None
+    assert "Headache" in res_headache.candidate_condition

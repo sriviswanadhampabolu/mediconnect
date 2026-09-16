@@ -11,7 +11,11 @@ LONG_TERM_INDICATORS = [
 COMMON_CONDITIONS = [
     {
         "name": "Mild Fever & General Body Weakness",
-        "keywords": [r"\bfever\b", r"\bmild fever\b", r"\btemperature\b", r"\bchills\b", r"\bhot body\b", r"\bshivering\b"],
+        "keywords": [
+            r"\bfever\b", r"\bmild fever\b", r"\btemperature\b", r"\bchills\b", r"\bhot body\b", r"\bshivering\b",
+            # Indian Languages / Hinglish keywords
+            r"\bbukhar\b", r"\bbukhaar\b", r"\bjwaram\b", r"\bjwara\b", r"\bkaachal\b", r"\bpani\b", r"\btap\b", r"\btaap\b"
+        ],
         "severity": "normal",
         "is_chronic": False,
         "otc_candidates": ["Paracetamol"],
@@ -19,7 +23,11 @@ COMMON_CONDITIONS = [
     },
     {
         "name": "Tension Headache / Head Pain",
-        "keywords": [r"\bheadache\b", r"\bhead ache\b", r"\bmild head pain\b", r"\btemple throbbing\b", r"\bhead heavy\b", r"\bmigraine\b"],
+        "keywords": [
+            r"\bheadache\b", r"\bhead ache\b", r"\bmild head pain\b", r"\btemple throbbing\b", r"\bhead heavy\b", r"\bmigraine\b",
+            # Indian Languages / Hinglish keywords
+            r"\bsir\s*dard\b", r"\bsar\s*dard\b", r"\bmatha\s*dard\b", r"\bthala\s*vali\b", r"\bthalanopi\b", r"\bmathavedhana\b", r"\bmunde\s*novvu\b"
+        ],
         "severity": "normal",
         "is_chronic": False,
         "otc_candidates": ["Paracetamol", "Ibuprofen"],
@@ -27,7 +35,11 @@ COMMON_CONDITIONS = [
     },
     {
         "name": "Common Cold, Cough & Sore Throat",
-        "keywords": [r"\bcold\b", r"\brunny nose\b", r"\bsneezing\b", r"\bsore throat\b", r"\bmild cough\b", r"\bthroat tickle\b", r"\bcough\b", r"\bthroat pain\b", r"\bflu\b"],
+        "keywords": [
+            r"\bcold\b", r"\brunny nose\b", r"\bsneezing\b", r"\bsore throat\b", r"\bmild cough\b", r"\bthroat tickle\b", r"\bcough\b", r"\bthroat pain\b", r"\bflu\b",
+            # Indian Languages / Hinglish keywords
+            r"\bsardi\b", r"\bzukham\b", r"\bjukham\b", r"\bkhansi\b", r"\bkhaansi\b", r"\bgale\s*me\s*dard\b", r"\birumal\b", r"\bdaggum\b", r"\bjaladosham\b"
+        ],
         "severity": "normal",
         "is_chronic": False,
         "otc_candidates": ["Cetirizine", "Paracetamol"],
@@ -35,7 +47,11 @@ COMMON_CONDITIONS = [
     },
     {
         "name": "Stomach Acidity, Gas & Heartburn",
-        "keywords": [r"\bacidity\b", r"\bheartburn\b", r"\bgas\b", r"\bstomach burn\b", r"\bindigestion\b", r"\bacid reflux\b", r"\bbloat\b", r"\bstomach pain\b"],
+        "keywords": [
+            r"\bacidity\b", r"\bheartburn\b", r"\bgas\b", r"\bstomach burn\b", r"\bindigestion\b", r"\bacid reflux\b", r"\bbloat\b", r"\bstomach pain\b",
+            # Indian Languages / Hinglish keywords
+            r"\bpet\s*dard\b", r"\bpet\s*kharab\b", r"\bgas\s*problem\b", r"\bjalan\b", r"\bchhati\s*me\s*jalan\b", r"\bvayitru\s*vali\b", r"\bkadupu\s*noppi\b", r"\bhotte\s*novvu\b"
+        ],
         "severity": "normal",
         "is_chronic": False,
         "otc_candidates": ["Magnesium & Aluminium Hydroxide Gel", "Famotidine"],
@@ -43,7 +59,11 @@ COMMON_CONDITIONS = [
     },
     {
         "name": "Muscular Strain & Body Ache",
-        "keywords": [r"\bbody ache\b", r"\bmuscle pain\b", r"\bsprain\b", r"\bworkout soreness\b", r"\bback ache\b", r"\bleg pain\b", r"\bneck pain\b", r"\bpain\b"],
+        "keywords": [
+            r"\bbody ache\b", r"\bmuscle pain\b", r"\bsprain\b", r"\bworkout soreness\b", r"\bback ache\b", r"\bleg pain\b", r"\bneck pain\b", r"\bpain\b",
+            # Indian Languages / Hinglish keywords
+            r"\bbadan\s*dard\b", r"\bsharir\s*dard\b", r"\bkamar\s*dard\b", r"\bpait\s*dard\b", r"\budambu\s*vali\b", r"\bkaal\s*vali\b", r"\bveepu\s*noppi\b"
+        ],
         "severity": "normal",
         "is_chronic": False,
         "otc_candidates": ["Paracetamol", "Diclofenac Gel"],
@@ -51,7 +71,11 @@ COMMON_CONDITIONS = [
     },
     {
         "name": "Mild Allergic Rhinitis & Eye Itching",
-        "keywords": [r"\ballergy\b", r"\bitche?y eyes\b", r"\bdust allergy\b", r"\bpollen\b", r"\ballergic cough\b", r"\bskin rash\b"],
+        "keywords": [
+            r"\ballergy\b", r"\bitche?y eyes\b", r"\bdust allergy\b", r"\bpollen\b", r"\ballergic cough\b", r"\bskin rash\b",
+            # Indian Languages / Hinglish keywords
+            r"\bkhujli\b", r"\brash\b", r"\bdane\b", r"\bchink\b", r"\bankh\s*lal\b", r"\baripallu\b"
+        ],
         "severity": "normal",
         "is_chronic": False,
         "otc_candidates": ["Cetirizine"],

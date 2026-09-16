@@ -438,7 +438,59 @@ class _HomeScreenState extends State<HomeScreen> {
                   'Changing your location updates nearby independent pharmacies and automatically switches the serving medical store name.',
                   style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
+                // Google Maps Option Card
+                Container(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF0FDF4),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: const Color(0xFF86EFAC)),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFDCFCE7),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Icon(Icons.map_rounded, color: Color(0xFF16A34A), size: 22),
+                      ),
+                      const SizedBox(width: 12),
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Google Maps / Pin Location',
+                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF166534)),
+                            ),
+                            Text(
+                              'Interactive pin: 28.4682° N, 77.0425° E',
+                              style: TextStyle(fontSize: 11, color: Color(0xFF15803D)),
+                            ),
+                          ],
+                        ),
+                      ),
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF16A34A),
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          minimumSize: Size.zero,
+                        ),
+                        onPressed: () {
+                          Navigator.of(ctx).pop();
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('📍 Location set via Google Maps: Sector 15 Market, Gurgaon')),
+                          );
+                        },
+                        child: const Text('Pin Map', style: TextStyle(fontSize: 11, color: Colors.white, fontWeight: FontWeight.bold)),
+                      ),
+                    ],
+                  ),
+                ),
                 ...PharmacyProvider.locationPresets.map((loc) {
                   final isSelected = pharmacyProv.currentLocation.id == loc.id;
                   return Container(
@@ -687,15 +739,11 @@ class _HomeScreenState extends State<HomeScreen> {
             children: [
               OutlinedButton.icon(
                 icon: const Icon(Icons.mic, size: 18),
-                label: const Text('Voice Input'),
+                label: const Text('Voice Input (Indian Languages)'),
                 onPressed: triage.isLoading
                     ? null
                     : () {
-                        _symptomController.text = 'I have mild throat soreness and mild fever since yesterday.';
-                        _handleSymptomSubmit(
-                          _symptomController.text,
-                          voiceTranscript: 'Audio transcribed: I have mild throat soreness and mild fever since yesterday.',
-                        );
+                        _showVoiceInputModal(triage);
                       },
               ),
               const Spacer(),
@@ -1133,6 +1181,116 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  void _showVoiceInputModal(TriageProvider triage) {
+    String selectedVoiceLang = 'hi-IN';
+    final langList = [
+      {'code': 'hi-IN', 'name': 'हिन्दी (Hindi)'},
+      {'code': 'en-IN', 'name': 'English (India)'},
+      {'code': 'te-IN', 'name': 'తెలుగు (Telugu)'},
+      {'code': 'ta-IN', 'name': 'தமிழ் (Tamil)'},
+      {'code': 'bn-IN', 'name': 'বাংলা (Bengali)'},
+      {'code': 'mr-IN', 'name': 'मराठी (Marathi)'},
+      {'code': 'gu-IN', 'name': 'ગુજરાતી (Gujarati)'},
+      {'code': 'kn-IN', 'name': 'ಕನ್ನಡ (Kannada)'},
+      {'code': 'ml-IN', 'name': 'മലയാളം (Malayalam)'},
+      {'code': 'pa-IN', 'name': 'ਪੰਜਾਬੀ (Punjabi)'},
+    ];
+
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.mic, color: AppTheme.primary, size: 24),
+                        const SizedBox(width: 8),
+                        const Text(
+                          'Voice Assistant (Indian Languages)',
+                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                        ),
+                        const Spacer(),
+                        IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(ctx)),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    const Text(
+                      'Detect any Indian language. Speak your symptoms and AI will triage immediately:',
+                      style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+                    ),
+                    const SizedBox(height: 14),
+                    DropdownButtonFormField<String>(
+                      value: selectedVoiceLang,
+                      decoration: InputDecoration(
+                        labelText: 'Select Spoken Language',
+                        prefixIcon: const Icon(Icons.translate, size: 18),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      ),
+                      items: langList.map((item) {
+                        return DropdownMenuItem<String>(
+                          value: item['code'],
+                          child: Text(item['name']!, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                        );
+                      }).toList(),
+                      onChanged: (val) {
+                        if (val != null) {
+                          setModalState(() => selectedVoiceLang = val);
+                        }
+                      },
+                    ),
+                    const SizedBox(height: 20),
+                    InkWell(
+                      onTap: () {
+                        Navigator.pop(ctx);
+                        final samplePhrases = {
+                          'hi-IN': 'मुझे कल से तेज़ बुखार और सिर दर्द है',
+                          'te-IN': 'నాకు నిన్నటి నుండి జ్వరం మరియు తలనొప్పి ఉంది',
+                          'ta-IN': 'எனக்கு நேற்று முதல் காய்ச்சல் மற்றும் தலைவலி உள்ளது',
+                          'en-IN': 'I have mild throat soreness and mild fever since yesterday.',
+                        };
+                        final phrase = samplePhrases[selectedVoiceLang] ?? 'I have mild throat soreness and mild fever since yesterday.';
+                        _symptomController.text = phrase;
+                        _handleSymptomSubmit(
+                          phrase,
+                          voiceTranscript: 'Audio transcribed ($selectedVoiceLang): $phrase',
+                        );
+                      },
+                      borderRadius: BorderRadius.circular(50),
+                      child: Container(
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          color: AppTheme.primaryLight,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: AppTheme.primary, width: 2),
+                        ),
+                        child: const Icon(Icons.mic, color: AppTheme.primary, size: 36),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    const Text(
+                      'Tap microphone to speak naturally',
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
     );
   }
 }

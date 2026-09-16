@@ -222,12 +222,110 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
     }
   }
 
+  String _selectedLanguage = 'English';
+
+  void _showLanguagePickerSheet() {
+    final languages = [
+      {'code': 'en', 'name': 'English', 'native': 'English'},
+      {'code': 'hi', 'name': 'Hindi', 'native': 'हिन्दी'},
+      {'code': 'te', 'name': 'Telugu', 'native': 'తెలుగు'},
+      {'code': 'ta', 'name': 'Tamil', 'native': 'தமிழ்'},
+      {'code': 'bn', 'name': 'Bengali', 'native': 'বাংলা'},
+      {'code': 'mr', 'name': 'Marathi', 'native': 'मराठी'},
+      {'code': 'gu', 'name': 'Gujarati', 'native': 'ગુજરાતી'},
+      {'code': 'kn', 'name': 'Kannada', 'native': 'ಕನ್ನಡ'},
+      {'code': 'ml', 'name': 'Malayalam', 'native': 'മലയാളം'},
+      {'code': 'pa', 'name': 'Punjabi', 'native': 'ਪੰਜਾਬੀ'},
+    ];
+
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.language, color: AppTheme.primary, size: 24),
+                    const SizedBox(width: 8),
+                    const Text('Select Language / भाषा चुनें', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                    const Spacer(),
+                    IconButton(icon: const Icon(Icons.close, size: 20), onPressed: () => Navigator.pop(ctx)),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Expanded(
+                  child: ListView.builder(
+                    itemCount: languages.length,
+                    itemBuilder: (ctx, i) {
+                      final l = languages[i];
+                      final isSelected = _selectedLanguage == l['name'];
+                      return ListTile(
+                        dense: true,
+                        leading: const Icon(Icons.translate, size: 20, color: AppTheme.primary),
+                        title: Text(l['native']!, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                        subtitle: Text(l['name']!, style: const TextStyle(fontSize: 12)),
+                        trailing: isSelected ? const Icon(Icons.check_circle, color: AppTheme.primary) : null,
+                        onTap: () {
+                          setState(() {
+                            _selectedLanguage = l['name']!;
+                          });
+                          Navigator.pop(ctx);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('App language changed to ${l['native']} (${l['name']})')),
+                          );
+                        },
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final auth = Provider.of<AuthProvider>(context);
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        actions: [
+          Container(
+            margin: const EdgeInsets.only(right: 16, top: 8),
+            child: TextButton.icon(
+              icon: const Icon(Icons.language, size: 18, color: AppTheme.primary),
+              label: Text(
+                _selectedLanguage,
+                style: const TextStyle(
+                  color: AppTheme.primary,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 13,
+                ),
+              ),
+              style: TextButton.styleFrom(
+                backgroundColor: AppTheme.primaryLight,
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              ),
+              onPressed: _showLanguagePickerSheet,
+            ),
+          ),
+        ],
+      ),
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(

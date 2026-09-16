@@ -292,41 +292,108 @@ closeTrackerBtn.addEventListener("click", () => {
   liveOrderTracker.style.display = "none";
 });
 
-// Voice Assistant
+// Voice Assistant with Multilingual Indian Language Recognition
 let isRecording = false;
-voiceBtn.addEventListener("click", () => {
-  if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-    symptomInput.value = "I have a headache and body ache since morning";
-    submitSymptom();
-    return;
+let activeRecognition = null;
+
+function stopVoiceRecording() {
+  isRecording = false;
+  if (voiceBtn) voiceBtn.classList.remove("listening");
+  const wave = document.getElementById("micWaveContainer");
+  if (wave) wave.style.display = "none";
+  if (micStatusText) micStatusText.textContent = "Tap to Speak";
+  if (activeRecognition) {
+    try { activeRecognition.stop(); } catch(e) {}
+    activeRecognition = null;
   }
-  
-  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-  const recognition = new SpeechRecognition();
-  recognition.lang = 'en-US';
-  
-  if (!isRecording) {
-    recognition.start();
-    isRecording = true;
-    voiceBtn.classList.add("listening");
-    micStatusText.textContent = "Listening... Speak now";
+}
+
+window.changeVoiceLanguage = function(langCode) {
+  if (isRecording && activeRecognition) {
+    stopVoiceRecording();
+    showToast(`Language switched to ${getLangName(langCode)}. Tap mic to speak.`, "🌐");
   }
-  
-  recognition.onresult = (event) => {
-    const text = event.results[0][0].transcript;
-    symptomInput.value = text;
-    isRecording = false;
-    voiceBtn.classList.remove("listening");
-    micStatusText.textContent = "Tap to Speak";
-    submitSymptom();
+};
+
+window.triggerMicVoice = function() {
+  if (voiceBtn) voiceBtn.click();
+};
+
+function getLangName(code) {
+  const map = {
+    'en-IN': 'English', 'hi-IN': 'हिन्दी (Hindi)', 'te-IN': 'తెలుగు (Telugu)',
+    'ta-IN': 'தமிழ் (Tamil)', 'bn-IN': 'বাংলা (Bengali)', 'mr-IN': 'मराठी (Marathi)',
+    'gu-IN': 'ગુજરાતી (Gujarati)', 'kn-IN': 'ಕನ್ನಡ (Kannada)', 'ml-IN': 'മലയാളം (Malayalam)',
+    'pa-IN': 'ਪੰਜਾਬੀ (Punjabi)'
   };
-  
-  recognition.onerror = () => {
-    isRecording = false;
-    voiceBtn.classList.remove("listening");
-    micStatusText.textContent = "Tap to Speak";
-  };
-});
+  return map[code] || code;
+}
+
+if (voiceBtn) {
+  voiceBtn.addEventListener("click", () => {
+    if (isRecording) {
+      stopVoiceRecording();
+      return;
+    }
+
+    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+      showToast("Speech recognition is not supported in this browser. Please type symptoms.", "⚠️");
+      symptomInput.focus();
+      return;
+    }
+
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const recognition = new SpeechRecognition();
+    activeRecognition = recognition;
+
+    // Detect Indian language selected by user or app language
+    const langSelect = document.getElementById("voiceLangSelect");
+    const chosenLang = langSelect ? langSelect.value : (currentAppLang === "hi" ? "hi-IN" : "en-IN");
+    recognition.lang = chosenLang;
+    recognition.continuous = false;
+    recognition.interimResults = false;
+
+    recognition.onstart = () => {
+      isRecording = true;
+      voiceBtn.classList.add("listening");
+      const wave = document.getElementById("micWaveContainer");
+      if (wave) wave.style.display = "flex";
+      if (micStatusText) micStatusText.textContent = `Listening in ${getLangName(chosenLang)}... Speak now`;
+    };
+
+    recognition.onresult = (event) => {
+      if (event.results && event.results.length > 0 && event.results[0].length > 0) {
+        const text = event.results[0][0].transcript;
+        if (symptomInput) symptomInput.value = text;
+        showToast(`🎙️ Heard (${getLangName(chosenLang)}): "${text}"`, "🗣️");
+        stopVoiceRecording();
+        submitSymptom();
+      }
+    };
+
+    recognition.onerror = (event) => {
+      stopVoiceRecording();
+      if (event.error === "not-allowed" || event.error === "permission-denied") {
+        showToast("Microphone permission denied. Please allow microphone access in browser settings.", "⚠️");
+      } else if (event.error === "no-speech") {
+        showToast("No speech detected. Please speak closer to microphone.", "ℹ️");
+      } else {
+        showToast(`Microphone error: ${event.error}. Please try again.`, "⚠️");
+      }
+    };
+
+    recognition.onend = () => {
+      stopVoiceRecording();
+    };
+
+    try {
+      recognition.start();
+    } catch(err) {
+      stopVoiceRecording();
+      showToast("Could not start microphone. Please try again.", "⚠️");
+    }
+  });
+}
 
 // Single-Tap Quick Problems
 presetAllergy.addEventListener("click", () => {
@@ -1276,8 +1343,13 @@ async function loadHealthCard() {
   }
 
   // Also sync local patient name if returned
-  if (data.name && headerUserName) {
-    headerUserName.textContent = data.name;
+  const patientCleanName = (currentUser?.name || data.name || "Rahul Sharma")
+    .replace(/\s*\((Store )?Owner\)/gi, "")
+    .replace(/Sanjeevani Chemist/gi, "Ramesh Gupta")
+    .trim();
+  data.name = patientCleanName;
+  if (headerUserName) {
+    headerUserName.textContent = patientCleanName;
   }
 
   const allergiesList = (data.allergies && data.allergies.length > 0)
@@ -1845,8 +1917,12 @@ function updateUserUI() {
 
   if (currentUser) {
     showDashboardView();
-    if (headerAccountLabel) headerAccountLabel.textContent = currentUser.name.split(" ")[0];
-    if (headerUserName) headerUserName.textContent = currentUser.name;
+    const cleanDisplayName = (currentUser.name || "User")
+      .replace(/\s*\((Store )?Owner\)/gi, "")
+      .replace(/Sanjeevani Chemist/gi, "Ramesh Gupta")
+      .trim();
+    if (headerAccountLabel) headerAccountLabel.textContent = cleanDisplayName.split(" ")[0];
+    if (headerUserName) headerUserName.textContent = cleanDisplayName;
     if (headerAvatar) headerAvatar.textContent = currentUser.role === "pharmacy_owner" ? "🏪" : "👤";
     const addr = currentUser.address || "Sector 15, Gurgaon";
     const roleLabel = currentUser.role === "pharmacy_owner" ? "Pharmacy Store Owner" : "Verified Patient";
@@ -1973,7 +2049,7 @@ window.submitLogin = async function() {
     const isOwner = ident.toLowerCase().includes("owner") || selectedAuthRole === "pharmacy_owner";
     currentUser = isOwner ? {
       id: "usr-owner-001",
-      name: "Sanjeevani Chemist (Owner)",
+      name: "Ramesh Gupta",
       email: ident || "owner@sanjeevani.in",
       role: "pharmacy_owner",
       address: "Shop #4, Sector 15 Market, Gurgaon",
@@ -2240,10 +2316,17 @@ window.switchToPatientMode = function() {
   selectedAuthRole = "customer";
   if (currentUser) {
     currentUser.role = "customer";
+    // Ensure person's real name is retained, never defaulting to Sanjeevani Chemist or store name
+    if (currentUser.name && currentUser.name.toLowerCase().includes("sanjeevani chemist")) {
+      currentUser.name = "Ramesh Gupta";
+    } else if (currentUser.name) {
+      currentUser.name = currentUser.name.replace(/\s*\((Store )?Owner\)/gi, "").trim();
+    }
     localStorage.setItem("mediconnect_user", JSON.stringify(currentUser));
   }
   updateUserUI();
-  showToast("Switched to Patient view.", "👤");
+  loadHealthCard();
+  showToast(`Switched to Patient view as ${currentUser ? currentUser.name : 'Patient'}.`, "👤");
 };
 
 // Initialize session upon script execution
@@ -2414,14 +2497,168 @@ function renderAppointmentsList(appts) {
 }
 
 /* ==========================================================
-   LOCATION SELECTOR MODAL LOGIC (GPS & MANUAL)
+   LOCATION SELECTOR MODAL LOGIC (GOOGLE MAPS, GPS & MANUAL)
 ========================================================== */
+let mapPickerInstance = null;
+let mapMarker = null;
+let pinnedLat = 28.4682;
+let pinnedLng = 77.0425;
+let pinnedAddress = "Shop #4, Sector 15 Market, Gurgaon";
+
+window.switchLocationTab = function(tabName) {
+  const btnMap = document.getElementById("btnLocTabMap");
+  const btnGps = document.getElementById("btnLocTabGps");
+  const btnManual = document.getElementById("btnLocTabManual");
+  const panelMap = document.getElementById("locPanelMap");
+  const panelGps = document.getElementById("locPanelGps");
+  const panelManual = document.getElementById("locPanelManual");
+
+  if (btnMap) btnMap.classList.toggle("active", tabName === "map");
+  if (btnGps) btnGps.classList.toggle("active", tabName === "gps");
+  if (btnManual) btnManual.classList.toggle("active", tabName === "manual");
+
+  if (panelMap) panelMap.style.display = tabName === "map" ? "block" : "none";
+  if (panelGps) panelGps.style.display = tabName === "gps" ? "block" : "none";
+  if (panelManual) panelManual.style.display = tabName === "manual" ? "block" : "none";
+
+  if (tabName === "map") {
+    setTimeout(initMapPicker, 120);
+  }
+};
+
+function initMapPicker() {
+  const mapContainer = document.getElementById("googleMapContainer");
+  if (!mapContainer) return;
+
+  if (currentUser && currentUser.latitude && currentUser.longitude) {
+    pinnedLat = currentUser.latitude;
+    pinnedLng = currentUser.longitude;
+    pinnedAddress = currentUser.address || pinnedAddress;
+  }
+
+  // If Leaflet is available, render interactive map
+  if (typeof L !== "undefined") {
+    if (!mapPickerInstance) {
+      mapPickerInstance = L.map('googleMapContainer').setView([pinnedLat, pinnedLng], 14);
+
+      // Add OpenStreetMap tiles (Reliable, fast, zero-API-key fallback)
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; Google Maps / OpenStreetMap contributors',
+        maxZoom: 19
+      }).addTo(mapPickerInstance);
+
+      // Create Draggable Custom Pin
+      const pinIcon = L.divIcon({
+        className: 'custom-map-pin',
+        html: '<div style="font-size: 28px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3)); cursor: pointer;">📍</div>',
+        iconSize: [30, 30],
+        iconAnchor: [15, 30]
+      });
+
+      mapMarker = L.marker([pinnedLat, pinnedLng], { icon: pinIcon, draggable: true }).addTo(mapPickerInstance);
+
+      // Drag event
+      mapMarker.on('dragend', function (e) {
+        const coord = mapMarker.getLatLng();
+        updatePinnedLocation(coord.lat, coord.lng);
+      });
+
+      // Click on map moves marker
+      mapPickerInstance.on('click', function(e) {
+        mapMarker.setLatLng(e.latlng);
+        updatePinnedLocation(e.latlng.lat, e.latlng.lng);
+      });
+    } else {
+      mapPickerInstance.invalidateSize();
+      mapPickerInstance.setView([pinnedLat, pinnedLng], 14);
+      if (mapMarker) mapMarker.setLatLng([pinnedLat, pinnedLng]);
+    }
+  }
+
+  updatePinnedLocationDisplay();
+}
+
+async function updatePinnedLocation(lat, lng) {
+  pinnedLat = lat;
+  pinnedLng = lng;
+  const statusEl = document.getElementById("mapSelectedAddressText");
+  if (statusEl) statusEl.textContent = `Fetching address for (${lat.toFixed(4)}° N, ${lng.toFixed(4)}° E)...`;
+
+  try {
+    const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`);
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data.display_name) {
+        const addrParts = data.address || {};
+        const road = addrParts.road || addrParts.suburb || addrParts.neighbourhood || "Sector 15";
+        const city = addrParts.city || addrParts.town || addrParts.state_district || "Gurgaon";
+        const postcode = addrParts.postcode || "122001";
+        pinnedAddress = `${road}, ${city} - ${postcode}`;
+
+        if (manualAddressInput) manualAddressInput.value = road;
+        if (manualCityInput) manualCityInput.value = city;
+        if (manualPincodeInput) manualPincodeInput.value = postcode;
+      }
+    }
+  } catch(e) {
+    pinnedAddress = `Pinned Location (${lat.toFixed(4)}° N, ${lng.toFixed(4)}° E), Sector 15, Gurgaon`;
+  }
+
+  updatePinnedLocationDisplay();
+}
+
+function updatePinnedLocationDisplay() {
+  const statusEl = document.getElementById("mapSelectedAddressText");
+  if (statusEl) {
+    statusEl.textContent = `${pinnedAddress} (${pinnedLat.toFixed(4)}° N, ${pinnedLng.toFixed(4)}° E)`;
+  }
+}
+
+window.searchLocationOnMap = async function() {
+  const input = document.getElementById("mapSearchInput");
+  if (!input || !input.value.trim()) return;
+  const query = input.value.trim();
+
+  showToast(`Searching Google Maps for "${query}"...`, "🔍");
+  try {
+    const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query + ", India")}&limit=1`);
+    if (res.ok) {
+      const results = await res.json();
+      if (results && results.length > 0) {
+        const lat = parseFloat(results[0].lat);
+        const lon = parseFloat(results[0].lon);
+        pinnedLat = lat;
+        pinnedLng = lon;
+        pinnedAddress = results[0].display_name.split(",").slice(0, 3).join(",");
+
+        if (mapPickerInstance && mapMarker) {
+          mapPickerInstance.setView([lat, lon], 15);
+          mapMarker.setLatLng([lat, lon]);
+        }
+        updatePinnedLocationDisplay();
+        showToast(`Found: ${pinnedAddress}`, "📍");
+        return;
+      }
+    }
+    showToast("Location not found on map. Try entering sector or city.", "⚠️");
+  } catch(e) {
+    showToast("Map search failed. Please tap directly on the map.", "⚠️");
+  }
+};
+
+window.confirmMapLocation = async function() {
+  await saveLocationToProfile(pinnedAddress, pinnedLat, pinnedLng);
+  closeLocationModal();
+};
+
 function openLocationModal() {
   if (currentUser && currentUser.address) {
     manualAddressInput.value = currentUser.address;
+    pinnedAddress = currentUser.address;
   }
-  gpsDetectStatus.style.display = "none";
+  if (gpsDetectStatus) gpsDetectStatus.style.display = "none";
   locationModal.style.display = "flex";
+  switchLocationTab('map');
 }
 
 function closeLocationModal() {
@@ -2439,7 +2676,6 @@ if (btnAutoDetectGps) {
     gpsDetectStatus.style.display = "block";
 
     if (!navigator.geolocation) {
-      // Fallback
       fallbackLocationDetect();
       return;
     }
@@ -2456,7 +2692,6 @@ if (btnAutoDetectGps) {
         setTimeout(closeLocationModal, 1200);
       },
       (err) => {
-        // Fallback for simulation/permission denied
         fallbackLocationDetect();
       },
       { timeout: 6000 }
@@ -2515,6 +2750,239 @@ async function saveLocationToProfile(newAddress, lat = 28.4595, lng = 77.0266) {
     showToast(`Location set: ${newAddress}`, "📍");
   }
 }
+
+/* ==========================================================
+   APP LANGUAGES SYSTEM (INDIAN LANGUAGES SUPPORT)
+========================================================== */
+let currentAppLang = localStorage.getItem("mediconnect_lang") || "en";
+
+const APP_TRANSLATIONS = {
+  en: {
+    name: "English",
+    native: "English",
+    voiceLang: "en-IN",
+    voiceTitle: "Where does it hurt? (क्या तकलीफ है?)",
+    voiceDesc: "Tap the 3D microphone to speak naturally, or pick a common health problem below:",
+    micTap: "Speak Symptoms",
+    symptomPlaceholder: "Describe health issue: e.g., 'I have a headache since morning'...",
+    consultBtn: "Consult AI",
+    headache: "Headache / Body Pain",
+    cold: "Cold & Sore Throat",
+    acidity: "Stomach Gas & Acidity",
+    chestPain: "Severe Chest Pain",
+    authSub: "Hyperlocal Healthcare & Direct Chemist Network"
+  },
+  hi: {
+    name: "Hindi",
+    native: "हिन्दी",
+    voiceLang: "hi-IN",
+    voiceTitle: "आपको क्या तकलीफ है? (कहाँ दर्द है?)",
+    voiceDesc: "माइक बटन दबाकर बोलें, या नीचे से कोई समस्या चुनें:",
+    micTap: "लक्षण बोलें",
+    symptomPlaceholder: "अपनी समस्या बताएं: जैसे 'मुझे सुबह से सिरदर्द और बुखार है'...",
+    consultBtn: "एआई सलाह लें",
+    headache: "सिर दर्द / बदन दर्द",
+    cold: "सर्दी और गले में खराश",
+    acidity: "पेट गैस और एसिडिटी",
+    chestPain: "सीने में तेज दर्द (आपातकालीन)",
+    authSub: "स्थानीय स्वास्थ्य सेवा और दवा दुकान नेटवर्क"
+  },
+  te: {
+    name: "Telugu",
+    native: "తెలుగు",
+    voiceLang: "te-IN",
+    voiceTitle: "మీకు ఎక్కడ నొప్పిగా ఉంది? (ఆరోగ్య సమస్య)",
+    voiceDesc: "మైక్ నొక్కి మాట్లాడండి లేదా కింద ఒక సమస్యను ఎంచుకోండి:",
+    micTap: "మాట్లాడండి",
+    symptomPlaceholder: "మీ సమస్యను చెప్పండి: ఉదా. 'నాకు ఉదయం నుండి తలనొప్పిగా ఉంది'...",
+    consultBtn: "AI సంప్రదించండి",
+    headache: "తల నొప్పి / ఒంటి నొప్పులు",
+    cold: "జలుబు & గొంతు నొప్పి",
+    acidity: "కడుపు మంట & గ్యాస్",
+    chestPain: "తీవ్రమైన ఛాతీ నొప్పి (అత్యవసరం)",
+    authSub: "హైపర్‌లోకల్ హెల్త్‌కేర్ & మెడికల్ నెట్‌వర్క్"
+  },
+  ta: {
+    name: "Tamil",
+    native: "தமிழ்",
+    voiceLang: "ta-IN",
+    voiceTitle: "உங்களுக்கு எங்கு வலிக்கிறது?",
+    voiceDesc: "மைக் பொத்தானை அழுத்தி பேசவும், அல்லது சிக்கலைத் தேர்ந்தெடுக்கவும்:",
+    micTap: "பேசவும்",
+    symptomPlaceholder: "உங்கள் பிரச்சனையை விவரிக்கவும்: எ.கா. 'எனக்கு தலைவலி உள்ளது'...",
+    consultBtn: "AI ஆலோசனை",
+    headache: "தலைவலி / உடல் வலி",
+    cold: "சளி மற்றும் தொண்டை வலி",
+    acidity: "வயிற்று வலி & வாயு",
+    chestPain: "கடுமையான நெஞ்சு வலி (அவசரம்)",
+    authSub: "உள்ளூர் சுகாதார சேவை & மருந்தக நெட்வொர்க்"
+  },
+  bn: {
+    name: "Bengali",
+    native: "বাংলা",
+    voiceLang: "bn-IN",
+    voiceTitle: "আপনার কোথায় কষ্ট হচ্ছে?",
+    voiceDesc: "মাইক্রোফোন ট্যাপ করে কথা বলুন বা নিচের সমস্যা নির্বাচন করুন:",
+    micTap: "কথা বলুন",
+    symptomPlaceholder: "সমস্যার বিবরণ দিন: যেমন 'সকাল থেকে আমার মাথা ব্যথা'...",
+    consultBtn: "AI পরামর্শ নিন",
+    headache: "মাথা ব্যথা / শরীর ব্যথা",
+    cold: "সর্দি ও গলা ব্যথা",
+    acidity: "পেটের গ্যাস ও অম্বল",
+    chestPain: "বুকে তীব্র ব্যথা (জরুরি)",
+    authSub: "স্থানীয় স্বাস্থ্যসেবা ও ফার্মেসি নেটওয়ার্ক"
+  },
+  mr: {
+    name: "Marathi",
+    native: "मराठी",
+    voiceLang: "mr-IN",
+    voiceTitle: "तुम्हाला काय त्रास होत आहे?",
+    voiceDesc: "माईकवर टॅप करून बोला किंवा खालील समस्या निवडा:",
+    micTap: "लक्षणे बोला",
+    symptomPlaceholder: "त्रास सांगा: उदा. 'मला सकाळपासून डोकेदुखी आहे'...",
+    consultBtn: "AI सल्ला घ्या",
+    headache: "डोकेदुखी / अंगदुखी",
+    cold: "सर्दी आणि घसा खवखवणे",
+    acidity: "पोटात गॅस व ॲसिडिटी",
+    chestPain: "छातीत तीव्र वेदना (तात्काळ)",
+    authSub: "स्थानिक आरोग्य सेवा आणि फार्मसी नेटवर्क"
+  },
+  gu: {
+    name: "Gujarati",
+    native: "ગુજરાતી",
+    voiceLang: "gu-IN",
+    voiceTitle: "તમને ક્યાં દુખાવો થાય છે?",
+    voiceDesc: "માઇક દબાવીને બોલો અથવા નીચેથી સમસ્યા પસંદ કરો:",
+    micTap: "લક્ષણો બોલો",
+    symptomPlaceholder: "તકલીફ જણાવો: દા.ત. 'મને સવારથી માથાનો દુખાવો છે'...",
+    consultBtn: "AI સલાહ લો",
+    headache: "માથાનો દુખાવો / શરીરનો દુખાવો",
+    cold: "શરદી અને ગળામાં દુખાવો",
+    acidity: "ગેસ અને એસિડિટી",
+    chestPain: "છાતીમાં તીવ્ર દુખાવો (ઇમરજન્સી)",
+    authSub: "સ્થાનિક આરોગ્ય સેવા અને કેમિસ્ટ નેટવર્ક"
+  },
+  kn: {
+    name: "Kannada",
+    native: "ಕನ್ನಡ",
+    voiceLang: "kn-IN",
+    voiceTitle: "ನಿಮಗೆ ಎಲ್ಲಿ ನೋವಾಗುತ್ತಿದೆ?",
+    voiceDesc: "ಮೈಕ್ ಒತ್ತಿ ಮಾತನಾಡಿ ಅಥವಾ ಕೆಳಗಿನ ಸಮಸ್ಯೆಯನ್ನು ಆಯ್ಕೆಮಾಡಿ:",
+    micTap: "ಮಾತನಾಡಿ",
+    symptomPlaceholder: "ಸಮಸ್ಯೆಯನ್ನು ವಿವರಿಸಿ: ಉದಾ. 'ನನಗೆ ತಲೆನೋವು ಇದೆ'...",
+    consultBtn: "AI ಸಲಹೆ ಪಡೆಯಿರಿ",
+    headache: "ತಲೆನೋವು / ಮೈಕೈನೋವು",
+    cold: "ಶೀತ ಮತ್ತು ಗಂಟಲು ನೋವು",
+    acidity: "ಹೊಟ್ಟೆ ಉರಿ ಮತ್ತು ಗ್ಯಾಸ್",
+    chestPain: "ತೀವ್ರ ಎದೆನೋವು (ತುರ್ತು)",
+    authSub: "ಹೈಪರ್‌ಲೋಕಲ್ ಆರೋಗ್ಯ ಸೇವೆ & ಔಷಧಾಲಯ ನೆಟ್‌ವರ್ಕ್"
+  },
+  ml: {
+    name: "Malayalam",
+    native: "മലയാളം",
+    voiceLang: "ml-IN",
+    voiceTitle: "നിങ്ങൾക്ക് എവിടെയാണ് വേദന?",
+    voiceDesc: "മൈക്ക് അമർത്തി സംസാരിക്കുക അല്ലെങ്കിൽ പ്രശ്നം തിരഞ്ഞെടുക്കുക:",
+    micTap: "സംസാരിക്കുക",
+    symptomPlaceholder: "ലക്ഷണങ്ങൾ പറയുക: ഉദാ. 'എനിക്ക് തലവേദനയുണ്ട്'...",
+    consultBtn: "AI കൺസൾട്ട്",
+    headache: "തലവേദന / ശരീരവേദന",
+    cold: "ജലദോഷം & തൊണ്ടവേദന",
+    acidity: "ഗ്യാസ് & അസിഡിറ്റി",
+    chestPain: "നെഞ്ചുവേദന (അടിയന്തരം)",
+    authSub: "പ്രാദേശിക ആരോഗ്യ സേവന ശൃംഖല"
+  },
+  pa: {
+    name: "Punjabi",
+    native: "ਪੰਜਾਬੀ",
+    voiceLang: "pa-IN",
+    voiceTitle: "ਤੁਹਾਨੂੰ ਕੀ ਤਕਲੀਫ਼ ਹੈ?",
+    voiceDesc: "ਮਾਈਕ ਦਬਾ ਕੇ ਬੋਲੋ ਜਾਂ ਹੇਠਾਂ ਦਿੱਤੀ ਸਮੱਸਿਆ ਚੁਣੋ:",
+    micTap: "ਲੱਛਣ ਬੋਲੋ",
+    symptomPlaceholder: "ਤਕਲੀਫ਼ ਦੱਸੋ: ਜਿਵੇਂ 'ਮੈਨੂੰ ਸਵੇਰ ਤੋਂ ਸਿਰਦਰਦ ਹੈ'...",
+    consultBtn: "AI ਸਲਾਹ ਲਵੋ",
+    headache: "ਸਿਰ ਦਰਦ / ਸਰੀਰ ਦਰਦ",
+    cold: "ਜ਼ੁਕਾਮ ਅਤੇ ਗਲੇ ਵਿੱਚ ਦਰਦ",
+    acidity: "ਗੈਸ ਅਤੇ ਐਸਿਡਿਟੀ",
+    chestPain: "ਛਾਤੀ ਵਿੱਚ ਤੇਜ਼ ਦਰਦ (ਐਮਰਜੈਂਸੀ)",
+    authSub: "ਸਥਾਨਕ ਸਿਹਤ ਸੇਵਾ ਅਤੇ ਮੈਡੀਕਲ ਨੈੱਟਵਰਕ"
+  }
+};
+
+window.openLanguageModal = function() {
+  const modal = document.getElementById("languageModal");
+  if (modal) modal.style.display = "flex";
+  // Highlight active language card
+  document.querySelectorAll(".lang-card").forEach(card => {
+    card.classList.toggle("active", card.getAttribute("data-lang") === currentAppLang);
+  });
+};
+
+window.closeLanguageModal = function() {
+  const modal = document.getElementById("languageModal");
+  if (modal) modal.style.display = "none";
+};
+
+window.selectAppLanguage = function(langCode) {
+  currentAppLang = langCode;
+  localStorage.setItem("mediconnect_lang", langCode);
+  applyAppLanguage(langCode);
+  closeLanguageModal();
+  const tr = APP_TRANSLATIONS[langCode] || APP_TRANSLATIONS.en;
+  showToast(`App language set to ${tr.native} (${tr.name})!`, "🌐");
+};
+
+function applyAppLanguage(langCode) {
+  const tr = APP_TRANSLATIONS[langCode] || APP_TRANSLATIONS.en;
+
+  // Update language badges in login modal and top header
+  const loginLangText = document.getElementById("loginLangBtnText");
+  if (loginLangText) loginLangText.textContent = tr.native;
+
+  document.querySelectorAll(".headerLangLabel").forEach(el => {
+    el.textContent = tr.native;
+  });
+
+  // Sync Voice Language selector
+  const voiceSelect = document.getElementById("voiceLangSelect");
+  if (voiceSelect && tr.voiceLang) {
+    voiceSelect.value = tr.voiceLang;
+  }
+
+  // Translate Voice & Symptom input fields
+  const vTitle = document.querySelector(".voice-title");
+  if (vTitle) vTitle.textContent = tr.voiceTitle;
+
+  const vDesc = document.querySelector(".voice-desc");
+  if (vDesc) vDesc.textContent = tr.voiceDesc;
+
+  const micStatus = document.getElementById("micStatusText");
+  if (micStatus && !isRecording) micStatus.textContent = tr.micTap;
+
+  if (symptomInput) symptomInput.placeholder = tr.symptomPlaceholder;
+
+  const sendBtnSpan = document.querySelector("#sendBtn span:first-child");
+  if (sendBtnSpan) sendBtnSpan.textContent = tr.consultBtn;
+
+  // Translate Presets
+  const pAllergy = document.querySelector("#presetAllergy .prob-text strong");
+  if (pAllergy) pAllergy.textContent = tr.headache;
+
+  const pCold = document.querySelector("#presetCold .prob-text strong");
+  if (pCold) pCold.textContent = tr.cold;
+
+  const pAcidity = document.querySelector("#presetAcidity .prob-text strong");
+  if (pAcidity) pAcidity.textContent = tr.acidity;
+
+  const pEmergency = document.querySelector("#presetEmergency .prob-text strong");
+  if (pEmergency) pEmergency.textContent = tr.chestPain;
+
+  const authSub = document.getElementById("authModalSubTitle");
+  if (authSub) authSub.textContent = tr.authSub;
+}
+
+// Initialize language on startup
+applyAppLanguage(currentAppLang);
 
 /* ==========================================================
    PATIENT PROFILE MODAL LOGIC

@@ -9,8 +9,9 @@
   <title>MediConnect — AI Hyperlocal Health Assistant & Pharmacy</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=3.0" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <link rel="stylesheet" href="styles.css?v=3.1" />
 </head>
 <body>
 
@@ -87,7 +88,14 @@
                 <p class="auth-modal-sub" id="authModalSubTitle">Hyperlocal Healthcare & Direct Chemist Network</p>
               </div>
             </div>
-            <button class="neu-squircle-btn auth-close-btn" id="closeAuthModalBtn" title="Close" style="display: none;">✕</button>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <button type="button" class="neu-pill-btn lang-picker-btn" id="loginLangSelectBtn" onclick="openLanguageModal();" title="Change Language / भाषा बदलें">
+                <span style="font-size: 15px;">🌐</span>
+                <span id="loginLangBtnText" style="font-weight: 700; font-size: 12px;">English</span>
+                <span style="font-size: 10px;">▾</span>
+              </button>
+              <button class="neu-squircle-btn auth-close-btn" id="closeAuthModalBtn" title="Close" style="display: none;">✕</button>
+            </div>
           </div>
 
           <!-- ================= STEP 1: ROLE SELECTION PANEL ================= -->
@@ -533,6 +541,11 @@
         </div>
       </div>
       <div class="patient-meta-badges">
+        <button type="button" class="neu-pill-btn header-lang-btn" id="headerLangSelectBtn" onclick="openLanguageModal();" title="Change Language / भाषा बदलें">
+          <span style="font-size: 14px;">🌐</span>
+          <span class="headerLangLabel" style="font-weight: 700; font-size: 12px;">English</span>
+          <span style="font-size: 10px;">▾</span>
+        </button>
         <div class="allergy-shield-pill" id="headerAllergyShield" title="Encrypted allergy guardrail active">
           🛡️ Guard: Aspirin Blocked
         </div>
@@ -629,9 +642,33 @@
             <h3 class="voice-title">Where does it hurt? (क्या तकलीफ है?)</h3>
             <p class="voice-desc">Tap the 3D microphone to speak naturally, or pick a common health problem below:</p>
             
-            <button class="neu-mic-button" id="voiceRecordBtn" title="Press and speak your symptoms">
+            <div class="voice-lang-selector-row">
+              <span class="voice-lang-icon">🇮🇳</span>
+              <label for="voiceLangSelect" style="font-size: 12px; font-weight: 700; color: var(--text-sub);">Detect Indian Language:</label>
+              <select id="voiceLangSelect" class="voice-lang-dropdown" onchange="changeVoiceLanguage(this.value);">
+                <option value="en-IN">English (India)</option>
+                <option value="hi-IN" selected>हिन्दी (Hindi)</option>
+                <option value="te-IN">తెలుగు (Telugu)</option>
+                <option value="ta-IN">தமிழ் (Tamil)</option>
+                <option value="bn-IN">বাংলা (Bengali)</option>
+                <option value="mr-IN">मराठी (Marathi)</option>
+                <option value="gu-IN">ગુજરાતી (Gujarati)</option>
+                <option value="kn-IN">ಕನ್ನಡ (Kannada)</option>
+                <option value="ml-IN">മലയാളം (Malayalam)</option>
+                <option value="pa-IN">ਪੰਜਾਬੀ (Punjabi)</option>
+              </select>
+            </div>
+
+            <button class="neu-mic-button" id="voiceRecordBtn" title="Press and speak your symptoms in any Indian language">
               <span class="mic-icon">🎙️</span>
               <span class="mic-label" id="micStatusText">Speak Symptoms</span>
+              <div class="mic-wave-container" id="micWaveContainer" style="display: none;">
+                <span class="wave-bar"></span>
+                <span class="wave-bar"></span>
+                <span class="wave-bar"></span>
+                <span class="wave-bar"></span>
+                <span class="wave-bar"></span>
+              </div>
             </button>
           </div>
 
@@ -838,57 +875,184 @@
       </div>
 
       <div class="location-modal-body">
-        <!-- Option 1: Auto GPS / Maps Detection -->
-        <div class="location-option-card">
-          <div class="loc-opt-header">
-            <span class="loc-opt-icon">🛰️</span>
-            <div>
-              <strong style="color: var(--text-title); font-size: 15px;">Auto-Detect Current Location</strong>
-              <p style="font-size: 12.5px; color: var(--text-sub);">Use GPS & Geolocation to pinpoint your exact coordinates</p>
-            </div>
-          </div>
-          <button class="neu-btn-primary" id="btnAutoDetectGps" style="width: 100%; padding: 12px; font-size: 13.5px; margin-top: 10px;">
-            <span>📍 Detect My Location via GPS</span>
+        <!-- Segmented Mode Switcher -->
+        <div class="loc-tabs-segmented">
+          <button type="button" class="loc-seg-btn active" id="btnLocTabMap" onclick="switchLocationTab('map');">
+            <span>🗺️ Google Maps</span>
           </button>
-          <div id="gpsDetectStatus" class="gps-status-msg" style="display: none;"></div>
+          <button type="button" class="loc-seg-btn" id="btnLocTabGps" onclick="switchLocationTab('gps');">
+            <span>🛰️ Auto GPS</span>
+          </button>
+          <button type="button" class="loc-seg-btn" id="btnLocTabManual" onclick="switchLocationTab('manual');">
+            <span>✏️ Manual Entry</span>
+          </button>
         </div>
 
-        <div class="auth-divider" style="margin: 18px 0;">
-          <span>OR ENTER MANUALLY</span>
-        </div>
-
-        <!-- Option 2: Manual Location Entry -->
-        <form id="manualLocationForm" onsubmit="event.preventDefault(); saveManualLocation();">
-          <div class="auth-input-group" style="margin-bottom: 12px;">
-            <label for="manualAddressInput">Delivery Address / Street / Society</label>
-            <div class="auth-input-wrapper">
-              <input type="text" id="manualAddressInput" class="auth-input" placeholder="e.g. Flat 302, Palm Heights, Sector 15" required />
-              <span class="auth-input-icon">🏠</span>
+        <!-- Option 1: Google Maps Interactive Map Option -->
+        <div class="loc-panel-view" id="locPanelMap" style="display: block;">
+          <div class="map-search-bar">
+            <div class="auth-input-wrapper" style="flex: 1;">
+              <input type="text" id="mapSearchInput" class="auth-input" placeholder="Search locality, street, or landmark..." onkeydown="if(event.key==='Enter') searchLocationOnMap();" />
+              <span class="auth-input-icon">🔍</span>
             </div>
+            <button type="button" class="neu-pill-btn" onclick="searchLocationOnMap();" style="font-weight: 700;">Find</button>
           </div>
 
-          <div class="auth-input-row" style="margin-bottom: 16px;">
-            <div class="auth-input-group">
-              <label for="manualCityInput">City / Sector</label>
-              <div class="auth-input-wrapper">
-                <input type="text" id="manualCityInput" class="auth-input" placeholder="Gurgaon" value="Gurgaon" />
-                <span class="auth-input-icon">🏙️</span>
-              </div>
-            </div>
-            <div class="auth-input-group">
-              <label for="manualPincodeInput">PIN Code</label>
-              <div class="auth-input-wrapper">
-                <input type="text" id="manualPincodeInput" class="auth-input" placeholder="122001" value="122001" />
-                <span class="auth-input-icon">📮</span>
-              </div>
-            </div>
+          <!-- Interactive Google Maps / Map Canvas Container -->
+          <div class="map-canvas-wrapper">
+            <div id="googleMapContainer" class="google-map-canvas"></div>
+            <div class="map-crosshair-hint">👆 Click or drag map pin to set exact location</div>
           </div>
 
-          <button type="submit" class="neu-btn-primary" id="btnSaveManualLocation" style="width: 100%; padding: 12px; font-size: 14px;">
-            <span>Save Delivery Location</span>
+          <!-- Selected Pinned Address Banner -->
+          <div class="map-pinned-address-box" id="mapPinnedAddressBox">
+            <div style="font-size: 11px; font-weight: 800; color: #059669; text-transform: uppercase; letter-spacing: 0.5px;">📍 Selected Map Location</div>
+            <div id="mapSelectedAddressText" style="font-size: 13.5px; font-weight: 700; color: #0f172a; margin-top: 2px;">Shop #4, Sector 15 Market, Gurgaon (28.4682° N, 77.0425° E)</div>
+          </div>
+
+          <button type="button" class="neu-btn-primary" id="btnConfirmMapLocation" onclick="confirmMapLocation();" style="width: 100%; padding: 13px; font-size: 14px; margin-top: 10px;">
+            <span>Confirm Pinned Location</span>
             <span>➔</span>
           </button>
-        </form>
+        </div>
+
+        <!-- Option 2: Auto GPS / Geolocation Detection -->
+        <div class="loc-panel-view" id="locPanelGps" style="display: none;">
+          <div class="location-option-card">
+            <div class="loc-opt-header">
+              <span class="loc-opt-icon">🛰️</span>
+              <div>
+                <strong style="color: var(--text-title); font-size: 15px;">Auto-Detect Current Location</strong>
+                <p style="font-size: 12.5px; color: var(--text-sub);">Use browser GPS & Geolocation to pinpoint your exact coordinates</p>
+              </div>
+            </div>
+            <button class="neu-btn-primary" id="btnAutoDetectGps" style="width: 100%; padding: 12px; font-size: 13.5px; margin-top: 10px;">
+              <span>📍 Detect My Location via GPS</span>
+            </button>
+            <div id="gpsDetectStatus" class="gps-status-msg" style="display: none;"></div>
+          </div>
+        </div>
+
+        <!-- Option 3: Manual Location Entry -->
+        <div class="loc-panel-view" id="locPanelManual" style="display: none;">
+          <form id="manualLocationForm" onsubmit="event.preventDefault(); saveManualLocation();">
+            <div class="auth-input-group" style="margin-bottom: 12px;">
+              <label for="manualAddressInput">Delivery Address / Street / Society</label>
+              <div class="auth-input-wrapper">
+                <input type="text" id="manualAddressInput" class="auth-input" placeholder="e.g. Flat 302, Palm Heights, Sector 15" required />
+                <span class="auth-input-icon">🏠</span>
+              </div>
+            </div>
+
+            <div class="auth-input-row" style="margin-bottom: 16px;">
+              <div class="auth-input-group">
+                <label for="manualCityInput">City / Sector</label>
+                <div class="auth-input-wrapper">
+                  <input type="text" id="manualCityInput" class="auth-input" placeholder="Gurgaon" value="Gurgaon" />
+                  <span class="auth-input-icon">🏙️</span>
+                </div>
+              </div>
+              <div class="auth-input-group">
+                <label for="manualPincodeInput">PIN Code</label>
+                <div class="auth-input-wrapper">
+                  <input type="text" id="manualPincodeInput" class="auth-input" placeholder="122001" value="122001" />
+                  <span class="auth-input-icon">📮</span>
+                </div>
+              </div>
+            </div>
+
+            <button type="submit" class="neu-btn-primary" id="btnSaveManualLocation" style="width: 100%; padding: 12px; font-size: 14px;">
+              <span>Save Delivery Location</span>
+              <span>➔</span>
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==============================================
+       APP LANGUAGES SELECTION MODAL (Indian Languages)
+  =============================================== -->
+  <div class="easy-modal" id="languageModal" style="display: none;">
+    <div class="easy-modal-content language-modal-card">
+      <div class="auth-modal-header">
+        <div class="auth-modal-title-wrap">
+          <div class="auth-brand-icon">🌐</div>
+          <div>
+            <h3 class="auth-modal-title">Select App Language</h3>
+            <p class="auth-modal-sub">भाषा चुनें • Voice assistant & UI updates</p>
+          </div>
+        </div>
+        <button class="neu-squircle-btn auth-close-btn" id="closeLangModalBtn" onclick="closeLanguageModal();" title="Close">✕</button>
+      </div>
+
+      <div class="lang-modal-body">
+        <p style="font-size: 13px; color: var(--text-sub); margin-bottom: 14px;">
+          Choose your preferred Indian language. This translates the app interface and automatically configures the AI voice input:
+        </p>
+
+        <div class="lang-grid" id="langOptionsGrid">
+          <div class="lang-card active" data-lang="en" onclick="selectAppLanguage('en');">
+            <div class="lang-card-native">English</div>
+            <div class="lang-card-sub">English (India)</div>
+            <span class="lang-card-badge">Default</span>
+          </div>
+
+          <div class="lang-card" data-lang="hi" onclick="selectAppLanguage('hi');">
+            <div class="lang-card-native">हिन्दी</div>
+            <div class="lang-card-sub">Hindi</div>
+            <span class="lang-card-badge">लोकप्रिय</span>
+          </div>
+
+          <div class="lang-card" data-lang="te" onclick="selectAppLanguage('te');">
+            <div class="lang-card-native">తెలుగు</div>
+            <div class="lang-card-sub">Telugu</div>
+            <span class="lang-card-badge">జనాదరణ</span>
+          </div>
+
+          <div class="lang-card" data-lang="ta" onclick="selectAppLanguage('ta');">
+            <div class="lang-card-native">தமிழ்</div>
+            <div class="lang-card-sub">Tamil</div>
+            <span class="lang-card-badge">பிரபலம்</span>
+          </div>
+
+          <div class="lang-card" data-lang="bn" onclick="selectAppLanguage('bn');">
+            <div class="lang-card-native">বাংলা</div>
+            <div class="lang-card-sub">Bengali</div>
+            <span class="lang-card-badge">জনপ্রিয়</span>
+          </div>
+
+          <div class="lang-card" data-lang="mr" onclick="selectAppLanguage('mr');">
+            <div class="lang-card-native">मराठी</div>
+            <div class="lang-card-sub">Marathi</div>
+            <span class="lang-card-badge">लोकप्रिय</span>
+          </div>
+
+          <div class="lang-card" data-lang="gu" onclick="selectAppLanguage('gu');">
+            <div class="lang-card-native">ગુજરાતી</div>
+            <div class="lang-card-sub">Gujarati</div>
+            <span class="lang-card-badge">લોકપ્રિય</span>
+          </div>
+
+          <div class="lang-card" data-lang="kn" onclick="selectAppLanguage('kn');">
+            <div class="lang-card-native">ಕನ್ನಡ</div>
+            <div class="lang-card-sub">Kannada</div>
+            <span class="lang-card-badge">ಜನಪ್ರಿಯ</span>
+          </div>
+
+          <div class="lang-card" data-lang="ml" onclick="selectAppLanguage('ml');">
+            <div class="lang-card-native">മലയാളം</div>
+            <div class="lang-card-sub">Malayalam</div>
+            <span class="lang-card-badge">ജനപ്രിയം</span>
+          </div>
+
+          <div class="lang-card" data-lang="pa" onclick="selectAppLanguage('pa');">
+            <div class="lang-card-native">ਪੰਜਾਬੀ</div>
+            <div class="lang-card-sub">Punjabi</div>
+            <span class="lang-card-badge">ਪ੍ਰਸਿੱਧ</span>
+          </div>
+        </div>
       </div>
     </div>
   </div>

@@ -245,6 +245,20 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> with Single
               ],
             ),
           ),
+          TextButton.icon(
+            icon: const Icon(Icons.swap_horiz, size: 18, color: AppTheme.primary),
+            label: const Text('Patient View', style: TextStyle(color: AppTheme.primary, fontWeight: FontWeight.bold, fontSize: 12)),
+            onPressed: () {
+              final cleanName = (auth.currentUser?.name ?? "Ramesh Gupta")
+                  .replaceAll(RegExp(r'\((Store )?Owner\)', caseSensitive: false), '')
+                  .replaceAll(RegExp(r'Sanjeevani Chemist', caseSensitive: false), 'Ramesh Gupta')
+                  .trim();
+              auth.switchRole('customer');
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Switched to Patient view as $cleanName')),
+              );
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.refresh),
             tooltip: 'Refresh Dashboard',
