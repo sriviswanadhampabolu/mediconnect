@@ -332,6 +332,7 @@ def create_pharmacy_order(payload: CreateOrderRequest):
         commission_amount=order_data["commission_amount"],
         auto_pay_approved=auto_pay_ok,
         requires_manual_confirmation=requires_manual,
+        remaining_payment_limit=payment_res.get("remaining_payment_limit"),
         message=payment_res["message"]
     )
 

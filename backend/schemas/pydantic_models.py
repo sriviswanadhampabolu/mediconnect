@@ -97,6 +97,7 @@ class OrderResponse(BaseModel):
     commission_amount: float
     auto_pay_approved: bool
     requires_manual_confirmation: bool
+    remaining_payment_limit: Optional[float] = None
     message: str
 
 class EmergencyTriggerRequest(BaseModel):

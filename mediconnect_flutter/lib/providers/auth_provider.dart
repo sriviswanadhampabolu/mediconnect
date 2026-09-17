@@ -96,6 +96,13 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  void updatePaymentLimit(double newLimit) {
+    if (_currentUser != null) {
+      _currentUser = _currentUser!.copyWith(paymentLimit: newLimit);
+      notifyListeners();
+    }
+  }
+
   void clearError() {
     _errorMessage = null;
     notifyListeners();

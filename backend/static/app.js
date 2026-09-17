@@ -76,6 +76,7 @@ function getRegisteredUsers() {
       email: "rahul@health.in",
       contact: "+91 98765 43210",
       contact_phone: "+91 98765 43210",
+      password: "Demo123!",
       role: "customer",
       address: "Sector 15, Gurgaon",
       village: "Sector 15",
@@ -90,12 +91,15 @@ function getRegisteredUsers() {
       email: "owner@sanjeevani.in",
       contact: "+91 98101 23456",
       contact_phone: "+91 98101 23456",
+      password: "Demo123!",
       role: "pharmacy_owner",
       address: "Shop #4, Sector 15 Market, Gurgaon",
       village: "Sector 15",
       latitude: 28.4682,
       longitude: 77.0425,
-      store_name: "Sanjeevani Local Chemist"
+      store_name: "Sanjeevani Local Chemist",
+      payment_limit: 1500,
+      allergies: []
     }
   ];
   try {
@@ -1431,9 +1435,10 @@ window.quickOrderMedicine = async function(medName, price) {
 };
 
 function displayLiveOrder(shopName, medName, amount) {
+  const curLimit = Number(currentUser?.payment_limit ?? localStorage.getItem("mediconnect_payment_limit") ?? 1500);
   if (trackerMedName) trackerMedName.textContent = medName;
   if (trackerShopName) trackerShopName.textContent = `from ${shopName}`;
-  if (trackerAmount) trackerAmount.textContent = `₹${Number(amount || 18).toFixed(0)} Paid (Auto-Approved)`;
+  if (trackerAmount) trackerAmount.textContent = `₹${Number(amount || 18).toFixed(0)} Paid (Deducted from Guardrail • ₹${curLimit.toFixed(0)} left)`;
   if (liveOrderTracker) {
     liveOrderTracker.style.display = "flex";
     liveOrderTracker.scrollIntoView({ behavior: "smooth" });
@@ -1525,6 +1530,14 @@ window.orderFromChemist = async function(pharmacyId, pharmacyName, medName, pric
   const shopTitle = pharmacyName || (nearest ? nearest.name : "Local Chemist");
   const pId = pharmacyId || (nearest ? nearest.id : "pharm-001");
   const numPrice = Number(price) || 18;
+
+  // 1. Guardrail Check: Verify order amount against user's Safe Auto-Pay Limit Guardrail
+  const curLimit = Number(currentUser?.payment_limit ?? localStorage.getItem("mediconnect_payment_limit") ?? 1500);
+  if (numPrice > curLimit) {
+    showToast(`Order amount (₹${numPrice}) exceeds your Safe Auto-Pay Limit Guardrail (₹${curLimit.toFixed(0)}).`, "⚠️");
+    return null;
+  }
+
   showProgress(`Placing order with ${shopTitle}...`);
   
   let orderData = null;
@@ -1583,12 +1596,40 @@ window.orderFromChemist = async function(pharmacyId, pharmacyName, medName, pric
     };
   }
 
+  // 2. DEDUCT MEDICINE PRICE AMOUNT FROM SAFE AUTO-PAY LIMIT GUARDRAIL
+  const remainingLimit = (orderData.remaining_payment_limit !== undefined && orderData.remaining_payment_limit !== null)
+    ? Number(orderData.remaining_payment_limit)
+    : Math.max(0, curLimit - numPrice);
+
+  if (currentUser) {
+    currentUser.payment_limit = remainingLimit;
+    localStorage.setItem("mediconnect_user", JSON.stringify(currentUser));
+    saveRegisteredUser(currentUser);
+  }
+  localStorage.setItem("mediconnect_payment_limit", remainingLimit.toString());
+
+  // Update UI indicators for the auto-pay cap
+  if (headerSpendingCap) {
+    headerSpendingCap.textContent = `🔒 Auto-Pay Cap: ₹${remainingLimit.toFixed(0)}`;
+  }
+  const profileCapEl = document.getElementById("profileViewLimit");
+  if (profileCapEl) {
+    profileCapEl.textContent = `₹${Math.round(remainingLimit)} per transaction`;
+  }
+  const editLimitInput = document.getElementById("editProfileLimit");
+  if (editLimitInput) {
+    editLimitInput.value = Math.round(remainingLimit);
+  }
+  if (typeof loadHealthCard === "function") {
+    loadHealthCard();
+  }
+
   // Persist order in local storage for the Orders & Appointments tab
   saveOrderToLocalStorage(orderData);
 
   // Display live order tracker banner
   displayLiveOrder(orderData.pharmacy_name || shopTitle, medName, orderData.total_amount || numPrice);
-  showToast(`Order Placed! ${orderData.pharmacy_name || shopTitle} is packing your medicine.`, "🎉");
+  showToast(`Order Placed! ₹${numPrice} deducted from your Safe Auto-Pay Guardrail. Remaining limit: ₹${remainingLimit.toFixed(0)}`, "🎉");
   return orderData;
 };
 
@@ -2172,6 +2213,16 @@ window.submitConfirmPasswordReset = async function() {
       return;
     }
 
+    // Persist new password to local registry so user can login with it
+    try {
+      const users = getRegisteredUsers();
+      const idx = users.findIndex(u => (u.email || "").toLowerCase() === (currentPasswordResetEmail || "").toLowerCase());
+      if (idx >= 0) {
+        users[idx].password = newPass;
+        localStorage.setItem("mediconnect_registered_users", JSON.stringify(users));
+      }
+    } catch(e) {}
+
     showToast("Password reset successfully! Please sign in with your new password.", "🎉");
 
     const identInput = document.getElementById("loginIdentifier");
@@ -2185,7 +2236,15 @@ window.submitConfirmPasswordReset = async function() {
     if (credPanel) credPanel.style.display = "block";
   } catch (err) {
     hideProgress();
-    showToast("Password reset successfully! (Demo Mode)", "🎉");
+    try {
+      const users = getRegisteredUsers();
+      const idx = users.findIndex(u => (u.email || "").toLowerCase() === (currentPasswordResetEmail || "").toLowerCase());
+      if (idx >= 0) {
+        users[idx].password = newPass;
+        localStorage.setItem("mediconnect_registered_users", JSON.stringify(users));
+      }
+    } catch(e) {}
+    showToast("Password reset successfully! Please sign in with your new password.", "🎉");
     const identInput = document.getElementById("loginIdentifier");
     const passInput = document.getElementById("loginPassword");
     if (identInput) identInput.value = currentPasswordResetEmail;
@@ -2456,7 +2515,7 @@ async function initAuthSession() {
   updateUserUI();
 }
 
-// Submit Login with Role Enforcement
+// Submit Login with Strict Credential Validation & Role Enforcement
 window.submitLogin = async function() {
   const identInput = document.getElementById("loginIdentifier");
   const passInput = document.getElementById("loginPassword");
@@ -2464,12 +2523,18 @@ window.submitLogin = async function() {
   const pass = passInput ? passInput.value : "";
 
   if (!ident) {
-    showToast("Please enter your phone number or email.", "⚠️");
+    showToast("Please enter your registered email address or phone number.", "⚠️");
+    return;
+  }
+  if (!pass) {
+    showToast("Please enter your password. (Or use 'Forgot Password?' if needed)", "⚠️");
     return;
   }
 
   showProgress("Authenticating securely...");
   let loggedInUser = null;
+  let backendFailed = false;
+  let backendErrorMessage = "";
 
   try {
     const res = await fetch(`${API_BASE}/auth/login`, {
@@ -2477,7 +2542,7 @@ window.submitLogin = async function() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         identifier: ident,
-        password: pass || "Demo123!",
+        password: pass,
         expected_role: selectedAuthRole
       })
     });
@@ -2487,63 +2552,61 @@ window.submitLogin = async function() {
       if (data && data.success && data.user) {
         loggedInUser = data.user;
       }
+    } else {
+      backendFailed = true;
+      const errData = await res.json().catch(() => ({}));
+      backendErrorMessage = errData.detail || "Incorrect email/phone or password.";
     }
   } catch (err) {
-    // API offline or unreachable
+    // API server offline or unreachable (e.g. static GitHub Pages)
   }
 
-  if (!loggedInUser) {
-    const registeredUsers = getRegisteredUsers();
-    const lowIdent = ident.toLowerCase();
-    const cleanDigits = ident.replace(/\D/g, "");
+  // If backend is active and returned a role error or invalid credentials
+  if (backendFailed && backendErrorMessage) {
+    if (backendErrorMessage.includes("switch role")) {
+      hideProgress();
+      showToast(backendErrorMessage, "⚠️");
+      return;
+    }
+  }
 
-    // 1. Look for matching registered user
-    const found = registeredUsers.find(u => {
-      const uEmail = (u.email || "").toLowerCase();
-      const uPhone = (u.contact || u.contact_phone || "").replace(/\D/g, "");
-      const uName = (u.name || "").toLowerCase();
-      return (uEmail && uEmail === lowIdent) ||
-             (cleanDigits.length >= 7 && uPhone && uPhone.includes(cleanDigits)) ||
-             (uName && uName === lowIdent);
-    });
+  // Look up user in local registered users registry
+  const registeredUsers = getRegisteredUsers();
+  const lowIdent = ident.toLowerCase();
+  const cleanDigits = ident.replace(/\D/g, "");
 
-    if (found) {
-      loggedInUser = { ...found };
-      if (selectedAuthRole && loggedInUser.role && loggedInUser.role !== selectedAuthRole) {
-        loggedInUser.role = selectedAuthRole;
-      }
+  const found = registeredUsers.find(u => {
+    const uEmail = (u.email || "").toLowerCase();
+    const uPhone = (u.contact || u.contact_phone || "").replace(/\D/g, "");
+    return (uEmail && uEmail === lowIdent) ||
+           (cleanDigits.length >= 7 && uPhone && uPhone.includes(cleanDigits));
+  });
+
+  if (loggedInUser) {
+    // Server login succeeded
+    if (found && found.password) {
+      loggedInUser.password = found.password;
     } else {
-      // 2. Create session for the EXACT user entered — never force demo user!
-      const isOwner = selectedAuthRole === "pharmacy_owner" || ident.toLowerCase().includes("owner");
-      let derivedName = ident;
-      if (ident.includes("@")) {
-        const parts = ident.split("@")[0].replace(/[._-]/g, " ").trim();
-        derivedName = parts.split(" ").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ") || "User";
-      } else if (cleanDigits.length >= 8) {
-        derivedName = `Patient (${ident.slice(-4)})`;
-      } else {
-        derivedName = ident.charAt(0).toUpperCase() + ident.slice(1);
-      }
+      loggedInUser.password = pass;
+    }
+  } else {
+    // Server is offline OR server rejected
+    if (!found) {
+      hideProgress();
+      showToast("No account found with this email. Please check your credentials or click 'Create Account' to sign up.", "❌");
+      return;
+    }
 
-      const cleanVil = pinnedVillage || (pinnedAddress ? pinnedAddress.split(",")[0].trim() : "Sector 15");
-      const cleanAddr = pinnedAddress || `${cleanVil}, Gurgaon`;
+    // Account found: MUST verify password matches the password given during signup or reset!
+    if (found.password && found.password !== pass) {
+      hideProgress();
+      showToast("Incorrect password! Please enter the correct password or use 'Forgot Password?'.", "❌");
+      return;
+    }
 
-      loggedInUser = {
-        id: "usr-" + Math.abs(ident.split("").reduce((acc, c) => acc + c.charCodeAt(0), 0) % 900000 + 100000),
-        name: derivedName,
-        email: ident.includes("@") ? ident : `${derivedName.toLowerCase().replace(/\s+/g, '')}@health.in`,
-        contact: cleanDigits.length >= 7 ? ident : "+91 98765 43210",
-        contact_phone: cleanDigits.length >= 7 ? ident : "+91 98765 43210",
-        role: isOwner ? "pharmacy_owner" : (selectedAuthRole || "customer"),
-        address: cleanAddr,
-        village: cleanVil,
-        latitude: pinnedLat || 28.4682,
-        longitude: pinnedLng || 77.0425,
-        store_name: isOwner ? `${derivedName}'s Medical Store` : null,
-        payment_limit: 1500,
-        allergies: []
-      };
-      saveRegisteredUser(loggedInUser);
+    loggedInUser = { ...found };
+    if (selectedAuthRole && loggedInUser.role && loggedInUser.role !== selectedAuthRole) {
+      loggedInUser.role = selectedAuthRole;
     }
   }
 
@@ -2568,7 +2631,7 @@ window.submitLogin = async function() {
   loadNearbyChemists();
 };
 
-// Submit Signup
+// Submit Signup with Real-Time Persistence
 window.submitSignup = async function() {
   const name = signupName ? signupName.value.trim() : "";
   const contact = signupContact ? signupContact.value.trim() : "";
@@ -2585,6 +2648,22 @@ window.submitSignup = async function() {
     showToast("Please fill in your name, contact number, and password.", "⚠️");
     return;
   }
+  if (!email || !email.includes("@")) {
+    showToast("Please enter a valid email address.", "⚠️");
+    return;
+  }
+  if (password.length < 4) {
+    showToast("Password must be at least 4 characters.", "⚠️");
+    return;
+  }
+
+  // Check if email already registered in local user registry
+  const existingUsers = getRegisteredUsers();
+  const existingAccount = existingUsers.find(u => (u.email || "").toLowerCase() === email.toLowerCase());
+  if (existingAccount) {
+    showToast("An account with this email already exists. Please sign in or use Forgot Password.", "⚠️");
+    return;
+  }
 
   showProgress("Creating encrypted profile & account...");
   try {
@@ -2594,7 +2673,7 @@ window.submitSignup = async function() {
       body: JSON.stringify({
         name: name,
         contact: contact,
-        email: email || null,
+        email: email,
         password: password,
         role: selectedAuthRole,
         store_name: selectedAuthRole === "pharmacy_owner" ? (storeName || `${name}'s Medical Store`) : null,
@@ -2612,8 +2691,8 @@ window.submitSignup = async function() {
       return;
     }
 
-    // Save new user session
-    currentUser = data.user;
+    // Save new user session with password included
+    currentUser = { ...data.user, password: password };
     currentUserId = data.user.id;
     localStorage.setItem("mediconnect_user", JSON.stringify(currentUser));
     saveRegisteredUser(currentUser);
@@ -2632,7 +2711,8 @@ window.submitSignup = async function() {
       name: name,
       contact: contact,
       contact_phone: contact,
-      email: email || `${name.toLowerCase().replace(/\s+/g, '')}@health.in`,
+      email: email,
+      password: password,
       role: selectedAuthRole,
       address: address || pinnedAddress || "Sector 15, Gurgaon",
       village: extractVillageName(address || pinnedAddress, "Rampur"),

@@ -59,6 +59,12 @@ class _OrderCheckoutScreenState extends State<OrderCheckoutScreen> {
     if (!mounted) return;
 
     if (response != null) {
+      if (auth.currentUser != null) {
+        final currentLimit = auth.currentUser!.paymentLimit;
+        final remaining = (currentLimit - response.totalAmount).clamp(0.0, double.infinity);
+        auth.updatePaymentLimit(remaining);
+      }
+
       showDialog(
         context: context,
         barrierDismissible: false,
@@ -80,6 +86,9 @@ class _OrderCheckoutScreenState extends State<OrderCheckoutScreen> {
                   children: [
                     Text('Total Paid: ₹${response.totalAmount.toStringAsFixed(2)}',
                         style: const TextStyle(fontWeight: FontWeight.bold, color: AppTheme.primaryDark)),
+                    const SizedBox(height: 4),
+                    Text('Auto-Pay Guardrail Remaining: ₹${(auth.currentUser?.paymentLimit ?? 1500).toStringAsFixed(0)}',
+                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppTheme.primaryDark)),
                     if (response.genericSavings > 0) ...[
                       const SizedBox(height: 4),
                       Text('You saved ₹${response.genericSavings.toStringAsFixed(2)} by choosing generic!',

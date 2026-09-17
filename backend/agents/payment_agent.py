@@ -52,12 +52,18 @@ def process_payment(
             status="COMPLETED"
         )
         db.add(new_payment)
+
+        # Deduct ordered amount from user's safe auto-pay limit guardrail
+        remaining_limit = limit
+        if user and not exceeds_limit:
+            remaining_limit = max(0.0, float(user.payment_limit or 1000.0) - float(amount))
+            user.payment_limit = remaining_limit
         
         audit = AgentAuditLog(
             agent_name="Payment Agent",
             user_id=user_id,
             action_type="PAYMENT_APPROVED",
-            input_summary=f"Order {order_id}: Amount ₹{amount} (Limit: ₹{limit})",
+            input_summary=f"Order {order_id}: Amount ₹{amount} (Limit: ₹{limit}, Remaining: ₹{remaining_limit:.2f})",
             output_summary=f"Payment {new_payment.id} processed via {payment_method}"
         )
         db.add(audit)
@@ -69,7 +75,9 @@ def process_payment(
             "status": "COMPLETED",
             "auto_approved": not exceeds_limit,
             "amount": amount,
-            "message": f"Payment of ₹{amount:.2f} processed successfully."
+            "user_limit": limit,
+            "remaining_payment_limit": remaining_limit,
+            "message": f"Payment of ₹{amount:.2f} processed successfully. Remaining Auto-Pay Limit: ₹{remaining_limit:.2f}."
         }
     finally:
         db.close()
