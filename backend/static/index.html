@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-  <link rel="stylesheet" href="styles.css?v=4.2" />
+  <link rel="stylesheet" href="styles.css?v=4.3" />
 </head>
 <body>
 
@@ -430,7 +430,7 @@
         <div class="brand-icon-box">🩺</div>
         <div class="brand-title-wrap">
           <h1>MediConnect</h1>
-          <p>AI Hyperlocal Health Assistant & Pharmacy</p>
+          <p data-i18n="brandSubtitle">AI Hyperlocal Health Assistant & Pharmacy</p>
         </div>
       </div>
 
@@ -461,7 +461,7 @@
       <!-- Right Header Actions: Guard Toggle, User Account (Profile/Sign Out), Emergency SOS -->
       <div class="brand-header-actions">
         <div class="neu-toggle-wrapper" title="Toggle AI Safety Guardrails Mode">
-          <span class="neu-toggle-label">Guard</span>
+          <span class="neu-toggle-label" data-i18n="guardLabel">Guard</span>
           <div class="neu-toggle active" id="systemToggleBtn">
             <div class="neu-toggle-track">
               <span class="neu-toggle-text off-text">OFF</span>
@@ -644,7 +644,7 @@
             
             <div class="voice-lang-selector-row">
               <span class="voice-lang-icon">🇮🇳</span>
-              <label for="voiceLangSelect" style="font-size: 12px; font-weight: 700; color: var(--text-sub);">Detect Indian Language:</label>
+              <label for="voiceLangSelect" data-i18n="detectIndianLanguage" style="font-size: 12px; font-weight: 700; color: var(--text-sub);">Detect Indian Language:</label>
               <select id="voiceLangSelect" class="voice-lang-dropdown" onchange="changeVoiceLanguage(this.value);">
                 <option value="en-IN">English (India)</option>
                 <option value="hi-IN" selected>हिन्दी (Hindi)</option>
@@ -661,7 +661,7 @@
 
             <button class="neu-mic-button" id="voiceRecordBtn" title="Press and speak your symptoms in any Indian language">
               <span class="mic-icon">🎙️</span>
-              <span class="mic-label" id="micStatusText">Speak Symptoms</span>
+              <span class="mic-label" id="micStatusText" data-i18n="micTap">Speak Symptoms</span>
               <div class="mic-wave-container" id="micWaveContainer" style="display: none;">
                 <span class="wave-bar"></span>
                 <span class="wave-bar"></span>
@@ -677,32 +677,32 @@
             <button class="problem-chip-btn" id="presetAllergy">
               <div class="prob-emoji">🤕</div>
               <div class="prob-text">
-                <strong>Headache / Body Pain</strong>
-                <span>Aspirin-safe pain relief</span>
+                <strong data-i18n="headache">Headache / Body Pain</strong>
+                <span data-i18n="headacheSub">Aspirin-safe pain relief</span>
               </div>
             </button>
             
             <button class="problem-chip-btn" id="presetCold">
               <div class="prob-emoji">🤧</div>
               <div class="prob-text">
-                <strong>Cold & Sore Throat</strong>
-                <span>Warm remedies & steam</span>
+                <strong data-i18n="cold">Cold & Sore Throat</strong>
+                <span data-i18n="coldSub">Warm remedies & steam</span>
               </div>
             </button>
             
             <button class="problem-chip-btn" id="presetAcidity">
               <div class="prob-emoji">🤢</div>
               <div class="prob-text">
-                <strong>Stomach Gas & Acidity</strong>
-                <span>Instant antacid relief</span>
+                <strong data-i18n="acidity">Stomach Gas & Acidity</strong>
+                <span data-i18n="aciditySub">Instant antacid relief</span>
               </div>
             </button>
             
             <button class="problem-chip-btn emergency-preset" id="presetEmergency">
               <div class="prob-emoji">🚨</div>
               <div class="prob-text">
-                <strong style="color: var(--status-danger);">Severe Chest Pain</strong>
-                <span>Immediate Ambulance SOS</span>
+                <strong style="color: var(--status-danger);" data-i18n="chestPain">Severe Chest Pain</strong>
+                <span data-i18n="chestPainSub">Immediate Ambulance SOS</span>
               </div>
             </button>
           </div>
@@ -711,7 +711,7 @@
         <!-- Reassuring Progress Bar -->
         <div class="friendly-progress" id="friendlyProgress" style="display: none;">
           <div class="spinner-dot"></div>
-          <span id="friendlyProgressText">Reviewing symptoms against safe health records...</span>
+          <span id="friendlyProgressText" data-i18n="evaluatingSymptoms">Reviewing symptoms against safe health records...</span>
         </div>
 
         <!-- Conversation & Triage Chat Stream -->
@@ -1200,6 +1200,6 @@
     <span class="toast-message" id="toastMessage">Order Placed Successfully!</span>
   </div>
 
-  <script src="app.js?v=4.2"></script>
+  <script src="app.js?v=4.3"></script>
 </body>
 </html>
