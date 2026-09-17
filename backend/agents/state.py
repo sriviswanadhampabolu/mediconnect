@@ -7,6 +7,8 @@ class AgentState(BaseModel):
     voice_transcript: Optional[str] = None
     latitude: float = 28.6139
     longitude: float = 77.2090
+    village: Optional[str] = None
+    address: Optional[str] = None
     
     # Safety assessment
     severity: str = "normal"  # "normal", "urgent", "emergency"

@@ -23,6 +23,86 @@ def pharmacy_agent_node(state: AgentState) -> AgentState:
     """
     if state.emergency_detected or state.is_long_term_or_specialist:
         return state
+
+    # Check if user has a custom village / location
+    is_custom_loc = False
+    v_name = (state.village or "").strip()
+    addr_name = (state.address or "").strip()
+    if v_name and v_name.lower() not in ["sector 15", "sector 15, gurgaon", "default"]:
+        is_custom_loc = True
+    elif addr_name and not any(k in addr_name.lower() for k in ["sector 15", "gurgaon", "gurugram"]):
+        is_custom_loc = True
+    elif haversine_distance_km(state.latitude, state.longitude, 28.4595, 77.0266) > 20.0:
+        is_custom_loc = True
+
+    if is_custom_loc:
+        from backend.api.routes_pharmacy import generate_village_pharmacies
+        resolved_vil = v_name or addr_name.split(",")[0].strip() or "Rampur"
+        village_pharmacies = generate_village_pharmacies(
+            village=resolved_vil,
+            address=addr_name or resolved_vil,
+            lat=state.latitude,
+            lng=state.longitude
+        )
+        ranked_pharmacies = []
+        target_meds = [m["generic_name"].lower().split()[0] for m in state.recommended_medicines]
+        if not target_meds:
+            target_meds = ["paracetamol"]
+
+        for pharm in village_pharmacies:
+            dist = pharm.get("distance_km", 0.4)
+            inv = pharm.get("inventory", [])
+            matched_items = []
+            for item in inv:
+                item_name = item.get("generic_name", "").lower()
+                for t in target_meds:
+                    if t in item_name:
+                        generic_price = float(item.get("generic_price", 0))
+                        branded_price = float(item.get("branded_price", generic_price))
+                        savings = max(0.0, branded_price - generic_price)
+                        discount_pct = round((savings / branded_price) * 100, 1) if branded_price > 0 else 0.0
+                        matched_items.append({
+                            "generic_name": item.get("generic_name"),
+                            "branded_name": item.get("branded_name"),
+                            "generic_price": generic_price,
+                            "branded_price": branded_price,
+                            "savings": savings,
+                            "discount_percent": discount_pct
+                        })
+            ranked_pharmacies.append({
+                "id": pharm["id"],
+                "name": pharm["name"],
+                "address": pharm["address"],
+                "phone": pharm["phone"],
+                "distance_km": dist,
+                "rating": pharm.get("rating", 4.8),
+                "response_time_min": pharm.get("response_time_min", 10),
+                "is_small_local_business": True,
+                "available_medicines": matched_items,
+                "direct_chat_available": True
+            })
+
+        ranked_pharmacies.sort(key=lambda p: (p["distance_km"], -p["rating"]))
+        state.nearby_pharmacies = ranked_pharmacies[:5]
+        best_deal = None
+        for p in ranked_pharmacies:
+            for m in p["available_medicines"]:
+                discount = m.get("discount_percent", 0.0)
+                if best_deal is None or (p["distance_km"] < best_deal["distance_km"]) or (p["distance_km"] == best_deal["distance_km"] and discount > best_deal.get("discount_percent", -1)):
+                    best_deal = {
+                        "pharmacy_id": p["id"],
+                        "pharmacy_name": p["name"],
+                        "address": p["address"],
+                        "phone": p["phone"],
+                        "distance_km": p["distance_km"],
+                        "medicine_name": m["generic_name"],
+                        "generic_price": m["generic_price"],
+                        "branded_price": m["branded_price"],
+                        "savings": m["savings"],
+                        "discount_percent": discount
+                    }
+        state.best_discount_pharmacy = best_deal
+        return state
         
     db = SessionLocal()
     try:

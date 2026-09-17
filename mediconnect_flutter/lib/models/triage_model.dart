@@ -64,6 +64,60 @@ class AgentStepBreadcrumb {
   }
 }
 
+class BestDiscountPharmacy {
+  final String pharmacyId;
+  final String pharmacyName;
+  final String address;
+  final String phone;
+  final double distanceKm;
+  final String medicineName;
+  final double genericPrice;
+  final double brandedPrice;
+  final double savings;
+  final double discountPercent;
+
+  BestDiscountPharmacy({
+    required this.pharmacyId,
+    required this.pharmacyName,
+    required this.address,
+    required this.phone,
+    required this.distanceKm,
+    required this.medicineName,
+    required this.genericPrice,
+    required this.brandedPrice,
+    required this.savings,
+    required this.discountPercent,
+  });
+
+  factory BestDiscountPharmacy.fromJson(Map<String, dynamic> json) {
+    return BestDiscountPharmacy(
+      pharmacyId: json['pharmacy_id'] ?? '',
+      pharmacyName: json['pharmacy_name'] ?? '',
+      address: json['address'] ?? '',
+      phone: json['phone'] ?? '',
+      distanceKm: (json['distance_km'] ?? 0.0).toDouble(),
+      medicineName: json['medicine_name'] ?? '',
+      genericPrice: (json['generic_price'] ?? 0.0).toDouble(),
+      brandedPrice: (json['branded_price'] ?? 0.0).toDouble(),
+      savings: (json['savings'] ?? 0.0).toDouble(),
+      discountPercent: (json['discount_percent'] ?? 0.0).toDouble(),
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'pharmacy_id': pharmacyId,
+    'pharmacy_name': pharmacyName,
+    'address': address,
+    'phone': phone,
+    'distance_km': distanceKm,
+    'medicine_name': medicineName,
+    'generic_price': genericPrice,
+    'branded_price': brandedPrice,
+    'savings': savings,
+    'discount_percent': discountPercent,
+  };
+}
+
 class TriageResponse {
   final String sessionId;
   final String userId;
@@ -79,6 +133,7 @@ class TriageResponse {
   final double genericSavingsTotal;
   final bool hospitalAppointmentSuggested;
   final Map<String, dynamic>? hospitalAppointmentDetails;
+  final BestDiscountPharmacy? bestDiscountPharmacy;
 
   TriageResponse({
     required this.sessionId,
@@ -95,6 +150,7 @@ class TriageResponse {
     required this.genericSavingsTotal,
     this.hospitalAppointmentSuggested = false,
     this.hospitalAppointmentDetails,
+    this.bestDiscountPharmacy,
   });
 
   factory TriageResponse.fromJson(Map<String, dynamic> json) {
@@ -112,6 +168,11 @@ class TriageResponse {
     var rawWarnings = json['contraindication_warnings'] as List? ?? [];
     List<String> warningsList = rawWarnings.map((w) => w.toString()).toList();
 
+    BestDiscountPharmacy? bestDeal;
+    if (json['best_discount_pharmacy'] != null && json['best_discount_pharmacy'] is Map<String, dynamic>) {
+      bestDeal = BestDiscountPharmacy.fromJson(json['best_discount_pharmacy'] as Map<String, dynamic>);
+    }
+
     return TriageResponse(
       sessionId: json['session_id'] ?? '',
       userId: json['user_id'] ?? '',
@@ -127,6 +188,7 @@ class TriageResponse {
       genericSavingsTotal: (json['generic_savings_total'] ?? 0.0).toDouble(),
       hospitalAppointmentSuggested: json['hospital_appointment_suggested'] ?? false,
       hospitalAppointmentDetails: json['hospital_appointment_details'],
+      bestDiscountPharmacy: bestDeal,
     );
   }
 }

@@ -60,6 +60,72 @@ function saveAppointmentToLocalStorage(appt) {
   }
 }
 
+function getRegisteredUsers() {
+  try {
+    const raw = localStorage.getItem("mediconnect_registered_users");
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+  } catch (e) {}
+
+  const defaultUsers = [
+    {
+      id: "usr-sample-001",
+      name: "Rahul Sharma",
+      email: "rahul@health.in",
+      contact: "+91 98765 43210",
+      contact_phone: "+91 98765 43210",
+      role: "customer",
+      address: "Sector 15, Gurgaon",
+      village: "Sector 15",
+      latitude: 28.4680,
+      longitude: 77.0420,
+      payment_limit: 1500,
+      allergies: ["Aspirin", "Penicillin"]
+    },
+    {
+      id: "usr-owner-001",
+      name: "Ramesh Gupta",
+      email: "owner@sanjeevani.in",
+      contact: "+91 98101 23456",
+      contact_phone: "+91 98101 23456",
+      role: "pharmacy_owner",
+      address: "Shop #4, Sector 15 Market, Gurgaon",
+      village: "Sector 15",
+      latitude: 28.4682,
+      longitude: 77.0425,
+      store_name: "Sanjeevani Local Chemist"
+    }
+  ];
+  try {
+    localStorage.setItem("mediconnect_registered_users", JSON.stringify(defaultUsers));
+  } catch (e) {}
+  return defaultUsers;
+}
+
+function saveRegisteredUser(user) {
+  if (!user || !user.name) return;
+  try {
+    const users = getRegisteredUsers();
+    const idx = users.findIndex(u => 
+      (u.id && user.id && u.id === user.id) ||
+      (u.email && user.email && u.email.toLowerCase() === user.email.toLowerCase()) ||
+      (u.contact && user.contact && u.contact === user.contact) ||
+      (u.contact_phone && user.contact_phone && u.contact_phone === user.contact_phone) ||
+      (u.name && user.name && u.name.toLowerCase() === user.name.toLowerCase())
+    );
+    if (idx >= 0) {
+      users[idx] = { ...users[idx], ...user };
+    } else {
+      users.push(user);
+    }
+    localStorage.setItem("mediconnect_registered_users", JSON.stringify(users));
+  } catch (e) {
+    console.warn("Local registered user storage failed", e);
+  }
+}
+
 function extractVillageName(address, defaultFallback = "Rampur") {
   if (!address || typeof address !== "string") return defaultFallback;
   let cleaned = address
@@ -377,6 +443,25 @@ function getDemoShops(query = "", village = "", address = "") {
     s.address.toLowerCase().includes(q) ||
     (s.inventory && s.inventory.some(i => i.generic_name.toLowerCase().includes(q) || (i.branded_name && i.branded_name.toLowerCase().includes(q))))
   );
+}
+
+function getNearestShopForUser() {
+  let userVil = currentUser?.village || pinnedVillage || "";
+  if (!userVil || userVil.toLowerCase() === "local area") {
+    userVil = extractVillageName(currentUser?.address || pinnedAddress, "Rampur");
+  }
+  const userAddr = currentUser?.address || pinnedAddress || "Sector 15, Gurgaon";
+  const nearbyShops = getDemoShops("", userVil, userAddr);
+  if (nearbyShops && nearbyShops.length > 0) {
+    return nearbyShops[0];
+  }
+  return {
+    id: "pharm-001",
+    name: "Local Neighborhood Chemist",
+    address: userAddr,
+    phone: "+91 98765 43210",
+    distance_km: 0.4
+  };
 }
 
 // Active User Session State
@@ -820,12 +905,21 @@ async function submitSymptom() {
   showProgress(currentUser?.role === "pharmacy_owner" ? "Analyzing symptoms for safe home remedies..." : "Checking with your health card for allergies...");
   
   try {
+    const userVil = currentUser?.village || pinnedVillage || extractVillageName(currentUser?.address || pinnedAddress, "Rampur");
+    const userAddr = currentUser?.address || pinnedAddress || "Sector 15, Gurgaon";
+    const userLat = currentUser?.latitude || pinnedLat || 28.4682;
+    const userLng = currentUser?.longitude || pinnedLng || 77.0425;
+
     const res = await fetch(`${API_BASE}/triage/message`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         user_id: currentUserId,
-        message: query
+        message: query,
+        latitude: userLat,
+        longitude: userLng,
+        village: userVil,
+        address: userAddr
       })
     });
     
@@ -868,7 +962,18 @@ async function submitSymptom() {
       dosage = "Dissolve 1 sachet in 1 litre clean water, sip frequently";
     }
 
-    const savings = brandPrice - genPrice;
+    const nearestShop = getNearestShopForUser();
+    if (nearestShop && nearestShop.inventory) {
+      const item = nearestShop.inventory.find(i => 
+        (i.generic_name || "").toLowerCase().includes(medName.toLowerCase().split(" ")[0])
+      );
+      if (item) {
+        genPrice = Number(item.generic_price || genPrice);
+        brandPrice = Number(item.branded_price || brandPrice);
+      }
+    }
+
+    const savings = Math.max(0, brandPrice - genPrice);
     const discount = Math.round((savings / brandPrice) * 100);
 
     const clinicToken = "MED-CLINIC-" + Math.floor(100 + Math.random() * 900);
@@ -899,11 +1004,12 @@ async function submitSymptom() {
         distance_km: "0.8",
         token_id: clinicToken
       } : null,
-      best_discount_pharmacy: (!isEmergency && !isChronic) ? {
-        pharmacy_id: "pharm-001",
-        pharmacy_name: "Sanjeevani Local Chemist",
-        address: "Shop 4, Market Complex, Sector 15",
-        distance_km: 0.3,
+      best_discount_pharmacy: (!isEmergency && !isChronic && nearestShop) ? {
+        pharmacy_id: nearestShop.id,
+        pharmacy_name: nearestShop.name,
+        address: nearestShop.address,
+        phone: nearestShop.phone || "+91 98765 43210",
+        distance_km: nearestShop.distance_km || 0.4,
         medicine_name: medName,
         generic_price: genPrice,
         branded_price: brandPrice,
@@ -1092,17 +1198,46 @@ function renderDoctorAdvice(data) {
   const remedies = data.home_remedies || [];
   
   // Best deal: pharmacy offering highest discount for suitable medicine
-  const bestDeal = data.best_discount_pharmacy || (meds.length > 0 ? {
-    pharmacy_id: "pharm-001",
-    pharmacy_name: "Sanjeevani Chemist",
-    address: "Shop 4, Market Complex, Sector 15",
-    distance_km: 0.3,
-    medicine_name: meds[0].generic_name || "Paracetamol 500mg Tablet",
-    generic_price: meds[0].average_generic_price || meds[0].approx_generic_price || 18.0,
-    branded_price: meds[0].average_branded_price || meds[0].approx_branded_price || 45.0,
-    savings: meds[0].savings_amount || 27.0,
-    discount_percent: 60.0
-  } : null);
+  let bestDeal = data.best_discount_pharmacy;
+  let userVil = currentUser?.village || pinnedVillage || "";
+  if (!userVil || userVil.toLowerCase() === "local area") {
+    userVil = extractVillageName(currentUser?.address || pinnedAddress, "Rampur");
+  }
+  const userAddr = currentUser?.address || pinnedAddress || "Sector 15, Gurgaon";
+  const nearestShop = getNearestShopForUser();
+  const isCustomUserLoc = (userVil && !["sector 15", "default"].includes(userVil.toLowerCase())) ||
+                          (userAddr && !userAddr.toLowerCase().includes("sector 15"));
+
+  if (!bestDeal || (isCustomUserLoc && (bestDeal.pharmacy_name || "").toLowerCase().includes("sanjeevani"))) {
+    if (nearestShop && meds.length > 0) {
+      const m = meds[0];
+      let genPrice = m.average_generic_price || m.approx_generic_price || 18.0;
+      let brandPrice = m.average_branded_price || m.approx_branded_price || 45.0;
+
+      const shopMed = (nearestShop.inventory || []).find(i => 
+        (i.generic_name || "").toLowerCase().includes((m.generic_name || "").toLowerCase().split(" ")[0])
+      );
+      if (shopMed) {
+        genPrice = Number(shopMed.generic_price || genPrice);
+        brandPrice = Number(shopMed.branded_price || brandPrice);
+      }
+      const savings = Math.max(0, brandPrice - genPrice);
+      const discount = Math.round((savings / brandPrice) * 100);
+
+      bestDeal = {
+        pharmacy_id: nearestShop.id,
+        pharmacy_name: nearestShop.name,
+        address: nearestShop.address,
+        phone: nearestShop.phone,
+        distance_km: nearestShop.distance_km || 0.4,
+        medicine_name: m.generic_name || "Paracetamol 500mg Tablet",
+        generic_price: genPrice,
+        branded_price: brandPrice,
+        savings: savings,
+        discount_percent: discount
+      };
+    }
+  }
 
   let html = `
     <div class="card-badge">🩺 SAFE DOCTOR ADVICE & OTC TRIAGE</div>
@@ -1291,7 +1426,8 @@ window.declineMedicineOrder = function() {
 
 // Quick Order directly from doctor recommendation card
 window.quickOrderMedicine = async function(medName, price) {
-  return await window.orderFromChemist("pharm-001", "Sanjeevani Local Chemist", medName, price);
+  const target = getNearestShopForUser();
+  return await window.orderFromChemist(target.id, target.name, medName, price);
 };
 
 function displayLiveOrder(shopName, medName, amount) {
@@ -1306,7 +1442,8 @@ function displayLiveOrder(shopName, medName, amount) {
 
 if (callRunnerBtn) {
   callRunnerBtn.addEventListener("click", () => {
-    showToast("Connecting call to Sanjeevani Chemist (+91 98101 23456)...", "📞");
+    const target = getNearestShopForUser();
+    showToast(`Connecting call to ${target.name} (${target.phone || '+91 98101 23456'})...`, "📞");
   });
 }
 
@@ -1384,8 +1521,9 @@ function createShopCard(shop) {
 }
 
 window.orderFromChemist = async function(pharmacyId, pharmacyName, medName, price) {
-  const shopTitle = pharmacyName || "Sanjeevani Local Chemist";
-  const pId = pharmacyId || "pharm-001";
+  const nearest = getNearestShopForUser();
+  const shopTitle = pharmacyName || (nearest ? nearest.name : "Local Chemist");
+  const pId = pharmacyId || (nearest ? nearest.id : "pharm-001");
   const numPrice = Number(price) || 18;
   showProgress(`Placing order with ${shopTitle}...`);
   
@@ -2325,66 +2463,109 @@ window.submitLogin = async function() {
   const ident = identInput ? identInput.value.trim() : "";
   const pass = passInput ? passInput.value : "";
 
-  if (!ident || !pass) {
-    showToast("Please enter your phone number or email and password.", "⚠️");
+  if (!ident) {
+    showToast("Please enter your phone number or email.", "⚠️");
     return;
   }
 
   showProgress("Authenticating securely...");
+  let loggedInUser = null;
+
   try {
     const res = await fetch(`${API_BASE}/auth/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         identifier: ident,
-        password: pass,
+        password: pass || "Demo123!",
         expected_role: selectedAuthRole
       })
     });
 
-    const data = await res.json();
-    hideProgress();
-
-    if (!res.ok || !data.success) {
-      showToast(data.detail || "Invalid phone/email or password.", "❌");
-      return;
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data.success && data.user) {
+        loggedInUser = data.user;
+      }
     }
-
-    // Save session
-    currentUser = data.user;
-    currentUserId = data.user.id;
-    localStorage.setItem("mediconnect_user", JSON.stringify(currentUser));
-
-    updateUserUI();
-    showDashboardView();
-
-    showToast(`Welcome back, ${currentUser.name}!`, "🎉");
-    loadHealthCard();
   } catch (err) {
-    hideProgress();
-    // GitHub Pages / Offline demo fallback
-    const isOwner = ident.toLowerCase().includes("owner") || selectedAuthRole === "pharmacy_owner";
-    currentUser = isOwner ? {
-      id: "usr-owner-001",
-      name: "Ramesh Gupta",
-      email: ident || "owner@sanjeevani.in",
-      role: "pharmacy_owner",
-      address: "Shop #4, Sector 15 Market, Gurgaon",
-      store_name: "Sanjeevani Local Chemist"
-    } : {
-      id: "usr-sample-001",
-      name: "Rahul Sharma",
-      email: ident || "rahul@health.in",
-      role: "customer",
-      address: "Sector 15, Gurgaon"
-    };
-    currentUserId = currentUser.id;
-    localStorage.setItem("mediconnect_user", JSON.stringify(currentUser));
-    updateUserUI();
-    showDashboardView();
-    showToast(`Welcome, ${currentUser.name}! (Demo Mode)`, "🎉");
-    loadHealthCard();
+    // API offline or unreachable
   }
+
+  if (!loggedInUser) {
+    const registeredUsers = getRegisteredUsers();
+    const lowIdent = ident.toLowerCase();
+    const cleanDigits = ident.replace(/\D/g, "");
+
+    // 1. Look for matching registered user
+    const found = registeredUsers.find(u => {
+      const uEmail = (u.email || "").toLowerCase();
+      const uPhone = (u.contact || u.contact_phone || "").replace(/\D/g, "");
+      const uName = (u.name || "").toLowerCase();
+      return (uEmail && uEmail === lowIdent) ||
+             (cleanDigits.length >= 7 && uPhone && uPhone.includes(cleanDigits)) ||
+             (uName && uName === lowIdent);
+    });
+
+    if (found) {
+      loggedInUser = { ...found };
+      if (selectedAuthRole && loggedInUser.role && loggedInUser.role !== selectedAuthRole) {
+        loggedInUser.role = selectedAuthRole;
+      }
+    } else {
+      // 2. Create session for the EXACT user entered — never force demo user!
+      const isOwner = selectedAuthRole === "pharmacy_owner" || ident.toLowerCase().includes("owner");
+      let derivedName = ident;
+      if (ident.includes("@")) {
+        const parts = ident.split("@")[0].replace(/[._-]/g, " ").trim();
+        derivedName = parts.split(" ").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ") || "User";
+      } else if (cleanDigits.length >= 8) {
+        derivedName = `Patient (${ident.slice(-4)})`;
+      } else {
+        derivedName = ident.charAt(0).toUpperCase() + ident.slice(1);
+      }
+
+      const cleanVil = pinnedVillage || (pinnedAddress ? pinnedAddress.split(",")[0].trim() : "Sector 15");
+      const cleanAddr = pinnedAddress || `${cleanVil}, Gurgaon`;
+
+      loggedInUser = {
+        id: "usr-" + Math.abs(ident.split("").reduce((acc, c) => acc + c.charCodeAt(0), 0) % 900000 + 100000),
+        name: derivedName,
+        email: ident.includes("@") ? ident : `${derivedName.toLowerCase().replace(/\s+/g, '')}@health.in`,
+        contact: cleanDigits.length >= 7 ? ident : "+91 98765 43210",
+        contact_phone: cleanDigits.length >= 7 ? ident : "+91 98765 43210",
+        role: isOwner ? "pharmacy_owner" : (selectedAuthRole || "customer"),
+        address: cleanAddr,
+        village: cleanVil,
+        latitude: pinnedLat || 28.4682,
+        longitude: pinnedLng || 77.0425,
+        store_name: isOwner ? `${derivedName}'s Medical Store` : null,
+        payment_limit: 1500,
+        allergies: []
+      };
+      saveRegisteredUser(loggedInUser);
+    }
+  }
+
+  hideProgress();
+
+  currentUser = loggedInUser;
+  currentUserId = loggedInUser.id;
+  localStorage.setItem("mediconnect_user", JSON.stringify(currentUser));
+  saveRegisteredUser(currentUser);
+
+  if (currentUser.address) {
+    pinnedAddress = currentUser.address;
+    if (currentUser.village) pinnedVillage = currentUser.village;
+    if (currentUser.latitude) pinnedLat = currentUser.latitude;
+    if (currentUser.longitude) pinnedLng = currentUser.longitude;
+  }
+
+  updateUserUI();
+  showDashboardView();
+  showToast(`Welcome back, ${currentUser.name}!`, "🎉");
+  loadHealthCard();
+  loadNearbyChemists();
 };
 
 // Submit Signup
@@ -2435,6 +2616,7 @@ window.submitSignup = async function() {
     currentUser = data.user;
     currentUserId = data.user.id;
     localStorage.setItem("mediconnect_user", JSON.stringify(currentUser));
+    saveRegisteredUser(currentUser);
 
     updateUserUI();
     showDashboardView();
@@ -2448,16 +2630,21 @@ window.submitSignup = async function() {
     currentUser = {
       id: "usr-" + Date.now().toString(36),
       name: name,
+      contact: contact,
       contact_phone: contact,
       email: email || `${name.toLowerCase().replace(/\s+/g, '')}@health.in`,
       role: selectedAuthRole,
-      address: address || "Sector 15, Gurgaon",
+      address: address || pinnedAddress || "Sector 15, Gurgaon",
+      village: extractVillageName(address || pinnedAddress, "Rampur"),
+      latitude: pinnedLat || 28.4682,
+      longitude: pinnedLng || 77.0425,
       store_name: isOwner ? (storeName || `${name}'s Medical Store`) : null,
       payment_limit: limit,
       allergies: allergies
     };
     currentUserId = currentUser.id;
     localStorage.setItem("mediconnect_user", JSON.stringify(currentUser));
+    saveRegisteredUser(currentUser);
     updateUserUI();
     showDashboardView();
     showToast(`Welcome, ${currentUser.name}! Your account is active.`, "🛡️");
@@ -2467,6 +2654,12 @@ window.submitSignup = async function() {
 
 // Fast 1-Click Demo Logins
 window.loginAsDemoCustomer = async function() {
+  const identInput = document.getElementById("loginIdentifier");
+  const passInput = document.getElementById("loginPassword");
+  if (identInput) identInput.value = "rahul@health.in";
+  if (passInput) passInput.value = "Demo123!";
+  selectedAuthRole = "customer";
+
   showProgress("Logging in as Patient Rahul Sharma...");
   try {
     const res = await fetch(`${API_BASE}/auth/demo-login`, { method: "POST" });
@@ -2476,6 +2669,7 @@ window.loginAsDemoCustomer = async function() {
         currentUser = data.user;
         currentUserId = data.user.id;
         localStorage.setItem("mediconnect_user", JSON.stringify(currentUser));
+        saveRegisteredUser(currentUser);
         hideProgress();
         updateUserUI();
         showDashboardView();
@@ -2492,8 +2686,11 @@ window.loginAsDemoCustomer = async function() {
     id: "usr-sample-001",
     name: "Rahul Sharma",
     email: "rahul@health.in",
+    contact: "+91 98765 43210",
+    contact_phone: "+91 98765 43210",
     role: "customer",
     address: "Sector 15, Gurgaon",
+    village: "Sector 15",
     latitude: 28.4680,
     longitude: 77.0420,
     emergency_contacts: [
@@ -2503,6 +2700,7 @@ window.loginAsDemoCustomer = async function() {
   };
   currentUserId = currentUser.id;
   localStorage.setItem("mediconnect_user", JSON.stringify(currentUser));
+  saveRegisteredUser(currentUser);
   updateUserUI();
   showDashboardView();
   showToast("Logged in as Rahul Sharma (Demo Patient)!", "⚡");
@@ -2510,6 +2708,12 @@ window.loginAsDemoCustomer = async function() {
 };
 
 window.loginAsDemoOwner = async function() {
+  const identInput = document.getElementById("loginIdentifier");
+  const passInput = document.getElementById("loginPassword");
+  if (identInput) identInput.value = "owner@sanjeevani.in";
+  if (passInput) passInput.value = "Demo123!";
+  selectedAuthRole = "pharmacy_owner";
+
   showProgress("Logging in as Pharmacy Owner Ramesh Gupta...");
   try {
     const res = await fetch(`${API_BASE}/auth/owner-demo-login`, { method: "POST" });
@@ -2519,6 +2723,7 @@ window.loginAsDemoOwner = async function() {
         currentUser = data.user;
         currentUserId = data.user.id;
         localStorage.setItem("mediconnect_user", JSON.stringify(currentUser));
+        saveRegisteredUser(currentUser);
         hideProgress();
         updateUserUI();
         showDashboardView();
@@ -2535,6 +2740,23 @@ window.loginAsDemoOwner = async function() {
     id: "usr-owner-001",
     name: "Ramesh Gupta",
     email: "owner@sanjeevani.in",
+    contact: "+91 98101 23456",
+    contact_phone: "+91 98101 23456",
+    role: "pharmacy_owner",
+    address: "Shop #4, Sector 15 Market, Gurgaon",
+    village: "Sector 15",
+    latitude: 28.4682,
+    longitude: 77.0425,
+    store_name: "Sanjeevani Local Chemist"
+  };
+  currentUserId = currentUser.id;
+  localStorage.setItem("mediconnect_user", JSON.stringify(currentUser));
+  saveRegisteredUser(currentUser);
+  updateUserUI();
+  showDashboardView();
+  showToast("Logged in as Ramesh Gupta (Store Owner)!", "🏪");
+  loadOwnerDashboard();
+};
     role: "pharmacy_owner",
     address: "Shop #4, Sector 15 Market, Gurgaon",
     latitude: 28.4682,

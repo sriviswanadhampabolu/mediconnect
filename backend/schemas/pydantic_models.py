@@ -36,6 +36,8 @@ class TriageMessageRequest(BaseModel):
     message: str
     latitude: Optional[float] = 28.6139
     longitude: Optional[float] = 77.2090
+    village: Optional[str] = None
+    address: Optional[str] = None
     voice_transcript: Optional[str] = None
 
 class MedicineRecommendation(BaseModel):

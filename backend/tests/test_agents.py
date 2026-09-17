@@ -220,3 +220,21 @@ async def test_indian_language_symptom_triage():
     res_headache = symptom_agent_node(state_headache)
     assert res_headache.candidate_condition is not None
     assert "Headache" in res_headache.candidate_condition
+
+@pytest.mark.asyncio
+async def test_village_pharmacy_triage():
+    """Verify custom village location triggers village pharmacy discovery and best discount pharmacy deal."""
+    state = AgentState(
+        user_id=SAMPLE_USER_ID,
+        message="I have a mild fever and bodyache",
+        latitude=17.3850,
+        longitude=78.4867,
+        village="Narsingi Village",
+        address="Narsingi Main Road"
+    )
+    result = await run_master_orchestrator(state)
+    assert len(result.nearby_pharmacies) > 0
+    assert result.best_discount_pharmacy is not None
+    assert "pharmacy_name" in result.best_discount_pharmacy
+    assert "generic_price" in result.best_discount_pharmacy
+

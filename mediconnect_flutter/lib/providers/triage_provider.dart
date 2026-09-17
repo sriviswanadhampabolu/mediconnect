@@ -29,6 +29,10 @@ class TriageProvider extends ChangeNotifier {
   Future<void> submitSymptom({
     required String query,
     String? voiceTranscript,
+    double latitude = 28.6139,
+    double longitude = 77.2090,
+    String? village,
+    String? address,
   }) async {
     _isLoading = true;
     _errorMessage = null;
@@ -39,6 +43,10 @@ class TriageProvider extends ChangeNotifier {
       final response = await _apiService.processTriage(
         message: query,
         voiceTranscript: voiceTranscript,
+        latitude: latitude,
+        longitude: longitude,
+        village: village,
+        address: address,
       );
 
       _currentTriage = response;

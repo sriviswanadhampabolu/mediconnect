@@ -18,6 +18,8 @@ class ApiService {
     double latitude = 28.6139,
     double longitude = 77.2090,
     String userId = ApiConstants.defaultUserId,
+    String? village,
+    String? address,
   }) async {
     final uri = Uri.parse(ApiConstants.triageMessage);
     final body = jsonEncode({
@@ -26,6 +28,8 @@ class ApiService {
       'voice_transcript': voiceTranscript,
       'latitude': latitude,
       'longitude': longitude,
+      if (village != null && village.isNotEmpty) 'village': village,
+      if (address != null && address.isNotEmpty) 'address': address,
     });
 
     final response = await client.post(

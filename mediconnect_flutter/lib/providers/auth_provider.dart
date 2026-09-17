@@ -36,6 +36,28 @@ class UserSession {
   }
 
   bool get isOwner => role == 'pharmacy_owner';
+
+  UserSession copyWith({
+    String? id,
+    String? name,
+    String? contact,
+    String? email,
+    String? role,
+    String? storeId,
+    String? address,
+    double? paymentLimit,
+  }) {
+    return UserSession(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      contact: contact ?? this.contact,
+      email: email ?? this.email,
+      role: role ?? this.role,
+      storeId: storeId ?? this.storeId,
+      address: address ?? this.address,
+      paymentLimit: paymentLimit ?? this.paymentLimit,
+    );
+  }
 }
 
 class AuthProvider extends ChangeNotifier {
@@ -61,6 +83,15 @@ class AuthProvider extends ChangeNotifier {
 
   void setSelectedRole(String role) {
     _selectedRole = role;
+    _errorMessage = null;
+    notifyListeners();
+  }
+
+  void switchRole(String role) {
+    _selectedRole = role;
+    if (_currentUser != null) {
+      _currentUser = _currentUser!.copyWith(role: role);
+    }
     _errorMessage = null;
     notifyListeners();
   }

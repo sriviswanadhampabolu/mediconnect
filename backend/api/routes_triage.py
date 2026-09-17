@@ -17,7 +17,9 @@ async def process_triage_message(payload: TriageMessageRequest):
         message=payload.message,
         voice_transcript=payload.voice_transcript,
         latitude=payload.latitude or 28.6139,
-        longitude=payload.longitude or 77.2090
+        longitude=payload.longitude or 77.2090,
+        village=payload.village,
+        address=payload.address
     )
     
     final_state = await run_master_orchestrator(initial_state)

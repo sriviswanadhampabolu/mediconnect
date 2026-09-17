@@ -13,6 +13,9 @@ import 'order_tracking_screen.dart';
 import 'hospital_booking_screen.dart';
 import 'payment_settings_screen.dart';
 import 'orders_list_screen.dart';
+import 'chemist_chat_screen.dart';
+import '../models/triage_model.dart';
+import '../models/pharmacy_model.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -41,9 +44,18 @@ class _HomeScreenState extends State<HomeScreen> {
   void _handleSymptomSubmit(String text, {String? voiceTranscript}) {
     if (text.trim().isEmpty) return;
     FocusScope.of(context).unfocus();
+    final pharmacyProv = Provider.of<PharmacyProvider>(context, listen: false);
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    final loc = pharmacyProv.currentLocation;
+    final userAddr = auth.currentUser?.address;
+
     Provider.of<TriageProvider>(context, listen: false).submitSymptom(
       query: text.trim(),
       voiceTranscript: voiceTranscript,
+      latitude: loc.latitude,
+      longitude: loc.longitude,
+      village: loc.name,
+      address: userAddr ?? loc.area,
     );
   }
 
@@ -330,7 +342,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
           // Triage Results Section
           if (triage.currentTriage != null) ...[
-            _buildTriageResults(triage.currentTriage!),
+            _buildTriageResults(triage.currentTriage!, pharmacyProv),
             const SizedBox(height: 24),
           ],
         ],
@@ -857,7 +869,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildTriageResults(triageResult) {
+  Widget _buildTriageResults(TriageResponse triageResult, PharmacyProvider pharmacyProv) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -896,7 +908,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      triageResult.candidateCondition ?? 'Triage Evaluation',
+                      triageResult.candidateCondition.isNotEmpty ? triageResult.candidateCondition : 'Triage Evaluation',
                       style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
                     ),
                   ),
@@ -911,6 +923,12 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
         const SizedBox(height: 16),
+
+        // Nearest Chemist Best Value Deal
+        if (triageResult.bestDiscountPharmacy != null) ...[
+          _buildBestChemistDealCard(triageResult.bestDiscountPharmacy!, pharmacyProv),
+          const SizedBox(height: 16),
+        ],
 
         // Contraindication / Allergy Warnings
         if (triageResult.contraindicationWarnings.isNotEmpty) ...[
@@ -1107,6 +1125,233 @@ class _HomeScreenState extends State<HomeScreen> {
           Text(
             'Dosage: ${med.dosageAndUsage}',
             style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: AppTheme.textPrimary),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBestChemistDealCard(BestDiscountPharmacy deal, PharmacyProvider pharmacyProv) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppTheme.success.withOpacity(0.5), width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: AppTheme.success.withOpacity(0.08),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            decoration: BoxDecoration(
+              color: AppTheme.success.withOpacity(0.12),
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(16),
+                topRight: Radius.circular(16),
+              ),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.local_offer_rounded, color: AppTheme.success, size: 18),
+                const SizedBox(width: 8),
+                const Text(
+                  'LOCAL CHEMIST BEST VALUE DEAL',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.5,
+                    color: AppTheme.success,
+                  ),
+                ),
+                const Spacer(),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: AppTheme.success,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    '${deal.discountPercent}% OFF',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            deal.pharmacyName,
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: AppTheme.textPrimary,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            '${deal.address} • ${deal.distanceKm.toStringAsFixed(1)} km away',
+                            style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: AppTheme.primaryLight,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Row(
+                        children: [
+                          Icon(Icons.verified, size: 14, color: AppTheme.primary),
+                          SizedBox(width: 4),
+                          Text(
+                            'Verified',
+                            style: TextStyle(
+                              color: AppTheme.primaryDark,
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const Divider(height: 24),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            deal.medicineName,
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                              color: AppTheme.textPrimary,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Row(
+                            children: [
+                              Text(
+                                '₹${deal.genericPrice.toStringAsFixed(0)}',
+                                style: const TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w900,
+                                  color: AppTheme.success,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              if (deal.brandedPrice > deal.genericPrice)
+                                Text(
+                                  'MRP ₹${deal.brandedPrice.toStringAsFixed(0)}',
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    decoration: TextDecoration.lineThrough,
+                                    color: AppTheme.textSecondary,
+                                  ),
+                                ),
+                              const SizedBox(width: 8),
+                              Text(
+                                '(Save ₹${deal.savings.toStringAsFixed(0)})',
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: AppTheme.success,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        icon: const Icon(Icons.chat_bubble_outline, size: 16),
+                        label: const Text('Chat Chemist'),
+                        onPressed: () {
+                          Pharmacy targetPharm = pharmacyProv.pharmacies.firstWhere(
+                            (p) => p.id == deal.pharmacyId,
+                            orElse: () => Pharmacy(
+                              id: deal.pharmacyId,
+                              name: deal.pharmacyName,
+                              address: deal.address,
+                              phone: deal.phone,
+                              distanceKm: deal.distanceKm,
+                              responseTimeMin: 10,
+                              rating: 4.8,
+                              isSmallLocalBusiness: true,
+                              inventory: [
+                                InventoryItem(
+                                  genericName: deal.medicineName,
+                                  brandedName: deal.medicineName,
+                                  genericPrice: deal.genericPrice,
+                                  brandedPrice: deal.brandedPrice,
+                                  stockQuantity: 50,
+                                  inStock: true,
+                                ),
+                              ],
+                              directChatPhone: deal.phone,
+                            ),
+                          );
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => ChemistChatScreen(pharmacy: targetPharm),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.primary,
+                          foregroundColor: Colors.white,
+                        ),
+                        icon: const Icon(Icons.storefront, size: 16),
+                        label: const Text('View Store'),
+                        onPressed: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(builder: (_) => const PharmacyListScreen()),
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ],
       ),
