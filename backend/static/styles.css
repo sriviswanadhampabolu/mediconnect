@@ -3535,3 +3535,12 @@ body {
   border: 1px solid #fde68a;
   color: #b45309;
 }
+
+/* Active Medications Capsule - High Contrast Legibility */
+.active-med-item,
+.active-med-item strong,
+.active-med-item span,
+.active-med-item div {
+  color: #ffffff !important;
+}
+

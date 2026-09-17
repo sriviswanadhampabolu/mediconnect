@@ -60,7 +60,80 @@ function saveAppointmentToLocalStorage(appt) {
   }
 }
 
-function getDemoShops(query = "") {
+function getDemoShops(query = "", village = "", address = "") {
+  const currentLoc = village || currentUser?.village || (currentUser?.address ? currentUser.address.split(",")[0].trim() : "");
+  const isCustomVillage = currentLoc && !currentLoc.toLowerCase().includes("sector 15") && !currentLoc.toLowerCase().includes("gurgaon");
+
+  if (isCustomVillage) {
+    const cleanVillage = currentLoc.replace(/Flat\s*\d+|Shop\s*\d+|House\s*\d+|Sector\s*\d+/gi, "").trim() || currentLoc;
+    const cleanAddr = address || currentUser?.address || `${cleanVillage} Main Road`;
+    const vHash = Math.abs(cleanVillage.split("").reduce((acc, c) => acc + c.charCodeAt(0), 0)) % 9000 + 1000;
+
+    const villageShops = [
+      {
+        id: `pharm-vil-${vHash}-01`,
+        name: `${cleanVillage} Jan Aushadhi Generic Chemist`,
+        address: `Near Gram Panchayat Office & Bus Stand, ${cleanAddr}`,
+        phone: `+91 98${vHash % 89 + 10} 12345`,
+        distance_km: 0.4,
+        rating: 4.9,
+        inventory: [
+          { generic_name: "Paracetamol 500mg Tablet", branded_name: "Crocin / Dolo", generic_price: 18, branded_price: 45, stock: 120 },
+          { generic_name: "Cetirizine 10mg Tablet", branded_name: "Zyrtec / Cetzine", generic_price: 15, branded_price: 42, stock: 110 },
+          { generic_name: "Omeprazole 20mg Capsule", branded_name: "Omez 20", generic_price: 22, branded_price: 62, stock: 105 },
+          { generic_name: "Oral Rehydration Salts (ORS) Sachet", branded_name: "Electral", generic_price: 14, branded_price: 22, stock: 200 }
+        ]
+      },
+      {
+        id: `pharm-vil-${vHash}-02`,
+        name: `${cleanVillage} Gramin Medical & First Aid Store`,
+        address: `Main Bazaar, Opposite Primary Health Center, ${cleanAddr}`,
+        phone: `+91 98${vHash % 89 + 10} 23456`,
+        distance_km: 0.8,
+        rating: 4.8,
+        inventory: [
+          { generic_name: "Paracetamol 500mg Tablet", branded_name: "Crocin 500", generic_price: 19, branded_price: 45, stock: 95 },
+          { generic_name: "Amoxicillin 500mg Capsule", branded_name: "Mox 500", generic_price: 45, branded_price: 110, stock: 60 },
+          { generic_name: "Ibuprofen 400mg Tablet", branded_name: "Brufen 400", generic_price: 22, branded_price: 52, stock: 80 }
+        ]
+      },
+      {
+        id: `pharm-vil-${vHash}-03`,
+        name: `Sri Balaji Medicos & Wellness, ${cleanVillage}`,
+        address: `Shop #3, Market Complex, ${cleanAddr}`,
+        phone: `+91 98${vHash % 89 + 10} 34567`,
+        distance_km: 1.3,
+        rating: 4.7,
+        inventory: [
+          { generic_name: "Paracetamol 650mg Tablet", branded_name: "Dolo 650", generic_price: 24, branded_price: 58, stock: 140 },
+          { generic_name: "Pantoprazole 40mg Tablet", branded_name: "Pan 40", generic_price: 28, branded_price: 88, stock: 130 },
+          { generic_name: "Vitamin C 500mg Chewable", branded_name: "Limcee", generic_price: 15, branded_price: 32, stock: 180 }
+        ]
+      },
+      {
+        id: `pharm-vil-${vHash}-04`,
+        name: `Sanjeevani Day-Night Chemist (${cleanVillage})`,
+        address: `Near High School Chowk, ${cleanAddr}`,
+        phone: `+91 98${vHash % 89 + 10} 45678`,
+        distance_km: 1.7,
+        rating: 4.6,
+        inventory: [
+          { generic_name: "Cetirizine 10mg Tablet", branded_name: "Cetzine", generic_price: 15, branded_price: 42, stock: 90 },
+          { generic_name: "Metformin 500mg SR Tablet", branded_name: "Glycomet", generic_price: 18, branded_price: 42, stock: 150 },
+          { generic_name: "Povidone Iodine 5% Ointment", branded_name: "Betadine", generic_price: 35, branded_price: 78, stock: 65 }
+        ]
+      }
+    ];
+
+    if (!query) return villageShops;
+    const q = query.toLowerCase();
+    return villageShops.filter(s => 
+      s.name.toLowerCase().includes(q) || 
+      s.address.toLowerCase().includes(q) ||
+      (s.inventory && s.inventory.some(i => i.generic_name.toLowerCase().includes(q) || (i.branded_name && i.branded_name.toLowerCase().includes(q))))
+    );
+  }
+
   const shops = [
     {
       id: "pharm-001",
@@ -1060,16 +1133,28 @@ if (callRunnerBtn) {
 async function loadNearbyChemists() {
   if (!chemistShopsBox || !chemistList) return;
   chemistShopsBox.style.display = "flex";
+
+  const village = currentUser?.village || (currentUser?.address ? currentUser.address.split(",")[0].trim() : "");
+  const addr = currentUser?.address || "";
+  const lat = currentUser?.latitude || 28.4682;
+  const lng = currentUser?.longitude || 77.0425;
+
+  const locNearEl = document.getElementById("nearLocationName");
+  if (locNearEl && village) {
+    locNearEl.textContent = village;
+  }
+
   let shops = [];
   try {
-    const res = await fetch(`${API_BASE}/pharmacy/nearby`);
+    const url = `${API_BASE}/pharmacy/nearby?lat=${lat}&lng=${lng}&village=${encodeURIComponent(village)}&address=${encodeURIComponent(addr)}`;
+    const res = await fetch(url);
     if (res.ok) {
       shops = await res.json();
     }
   } catch (err) {}
 
   if (!shops || shops.length === 0) {
-    shops = getDemoShops();
+    shops = getDemoShops("", village, addr);
   }
 
   chemistList.innerHTML = "";
@@ -1087,23 +1172,28 @@ function createShopCard(shop) {
   const price = med ? (med.generic_price || med.price || 18) : 18;
   const medName = med ? (med.generic_name || med.name || "Paracetamol 500mg") : "Paracetamol 500mg";
   
+  const inStockLabel = typeof t === "function" ? t('inStock', 'Has in stock') : 'Has in stock';
+  const orderLabel = typeof t === "function" ? t('orderDelivery', 'Order for Delivery') : 'Order for Delivery';
+  const callLabel = typeof t === "function" ? t('callShop', '📞 Call Shop') : '📞 Call Shop';
+  const kmLabel = typeof t === "function" ? t('kmAway', 'km away') : 'km away';
+
   card.innerHTML = `
     <div class="shop-main-info">
       <div>
         <h4 class="shop-name-title">🏪 ${shop.name}</h4>
         <p class="shop-address-text">${shop.address}</p>
       </div>
-      <span class="distance-badge">${shop.distance_km || 0.4} km away</span>
+      <span class="distance-badge">${shop.distance_km || 0.4} ${kmLabel}</span>
     </div>
     <div class="shop-inventory-pill">
-      Has <strong>${medName}</strong> in stock (Only ₹${price})
+      ${inStockLabel}: <strong>${medName}</strong> (₹${price})
     </div>
     <div class="shop-action-buttons">
       <button class="btn-buy-medicine" onclick="orderFromChemist('${shop.id}', '${shop.name}', '${medName}', ${price})">
-        Order for Delivery (₹${price})
+        ${orderLabel} (₹${price})
       </button>
       <button class="btn-call-shop" onclick="callChemist('${shop.phone}', '${shop.name}')">
-        📞 Call Shop
+        ${callLabel}
       </button>
     </div>
   `;
@@ -1292,10 +1382,20 @@ function switchMainTab(tab) {
 
 async function loadFullChemistList(query = "") {
   if (!fullChemistList) return;
-  fullChemistList.innerHTML = "<div style='color:#94a3b8; padding:10px;'>Finding trusted neighborhood medical stores...</div>";
+  const findingText = typeof t === "function" ? t('findingStores', 'Finding trusted neighborhood medical stores...') : 'Finding trusted neighborhood medical stores...';
+  fullChemistList.innerHTML = `<div style='color:#94a3b8; padding:10px;'>${findingText}</div>`;
+
+  const village = currentUser?.village || (currentUser?.address ? currentUser.address.split(",")[0].trim() : "");
+  const addr = currentUser?.address || "";
+  const lat = currentUser?.latitude || 28.4682;
+  const lng = currentUser?.longitude || 77.0425;
+
   let shops = [];
   try {
-    const url = query ? `${API_BASE}/pharmacy/nearby?query=${encodeURIComponent(query)}` : `${API_BASE}/pharmacy/nearby`;
+    let url = `${API_BASE}/pharmacy/nearby?lat=${lat}&lng=${lng}&village=${encodeURIComponent(village)}&address=${encodeURIComponent(addr)}`;
+    if (query) {
+      url += `&query=${encodeURIComponent(query)}`;
+    }
     const res = await fetch(url);
     if (res.ok) {
       shops = await res.json();
@@ -1303,7 +1403,7 @@ async function loadFullChemistList(query = "") {
   } catch (e) {}
 
   if (!shops || shops.length === 0) {
-    shops = getDemoShops(query);
+    shops = getDemoShops(query, village, addr);
   }
 
   fullChemistList.innerHTML = "";
@@ -1352,50 +1452,68 @@ async function loadHealthCard() {
     headerUserName.textContent = patientCleanName;
   }
 
+  const trAllergic = typeof t === "function" ? t('allergicTo', 'Allergic to') : 'Allergic to';
+  const trNoAllergies = typeof t === "function" ? t('noAllergies', 'No known allergies recorded. Add any adverse reactions below:') : 'No known allergies recorded. Add any adverse reactions below:';
+  const trNoMeds = typeof t === "function" ? t('noActiveMeds', 'No active prescribed medications.') : 'No active prescribed medications.';
+  const trPatientProfile = typeof t === "function" ? t('patientProfile', 'Patient Profile') : 'Patient Profile';
+  const trName = typeof t === "function" ? t('nameLabel', 'Name') : 'Name';
+  const trContact = typeof t === "function" ? t('contactLabel', 'Contact') : 'Contact';
+  const trAddress = typeof t === "function" ? t('addressLabel', 'Delivery Address') : 'Delivery Address';
+  const trAllergiesTitle = typeof t === "function" ? t('allergiesTitle', 'My Medicine Allergies (Protected by AI Safety Guard)') : 'My Medicine Allergies (Protected by AI Safety Guard)';
+  const trAllergiesDesc = typeof t === "function" ? t('allergiesDesc', 'Medicines on this denylist are permanently blocked by the 12-agent graph from ever being recommended:') : 'Medicines on this denylist are permanently blocked by the 12-agent graph from ever being recommended:';
+  const trAllergyPh = typeof t === "function" ? t('allergyPlaceholder', 'Add allergy (e.g. Sulfa, Peanuts, Ibuprofen)...') : 'Add allergy (e.g. Sulfa, Peanuts, Ibuprofen)...';
+  const trAddAllergy = typeof t === "function" ? t('addAllergyBtn', '+ Add & Encrypt') : '+ Add & Encrypt';
+  const trActiveMedsTitle = typeof t === "function" ? t('activeMedsTitle', 'Active Medications History') : 'Active Medications History';
+  const trAutoPayTitle = typeof t === "function" ? t('autoPayTitle', 'Safe Auto-Pay Limit Guardrail') : 'Safe Auto-Pay Limit Guardrail';
+  const trCurrentCap = typeof t === "function" ? t('currentCap', 'Current server-enforced cap') : 'Current server-enforced cap';
+  const trAutoPayDesc = typeof t === "function" ? t('autoPayDesc', 'Any medicine order higher than this threshold is denied automatically and requires 2-step manual approval.') : 'Any medicine order higher than this threshold is denied automatically and requires 2-step manual approval.';
+  const trLimitPh = typeof t === "function" ? t('limitPlaceholder', 'New limit in ₹ (e.g. 2000)') : 'New limit in ₹ (e.g. 2000)';
+  const trUpdateLimit = typeof t === "function" ? t('updateLimitBtn', 'Update Limit') : 'Update Limit';
+
   const allergiesList = (data.allergies && data.allergies.length > 0)
-    ? data.allergies.map(a => `<div class="allergy-item">🛡️ Allergic to: ${a}</div>`).join("")
-    : "<div style='font-size:12.5px; color:#94a3b8; padding:6px 0;'>No known allergies recorded. Add any adverse reactions below:</div>";
+    ? data.allergies.map(a => `<div class="allergy-item">🛡️ ${trAllergic}: ${a}</div>`).join("")
+    : `<div style='font-size:12.5px; color:#94a3b8; padding:6px 0;'>${trNoAllergies}</div>`;
 
   const medsList = (data.active_medications && data.active_medications.length > 0)
     ? data.active_medications.map(m => `
-        <div style="background:#0f172a; padding:8px 12px; border-radius:8px; font-size:13px; margin-bottom:4px;">
-          <strong>${m.medicine_name}</strong> - ${m.dosage}
+        <div class="active-med-item" style="background:#0f172a; color:#ffffff !important; padding:10px 14px; border-radius:8px; font-size:13.5px; margin-bottom:6px; box-shadow: inset 0 1px 3px rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.12);">
+          <strong style="color:#ffffff !important; font-weight:700;">${m.medicine_name}</strong> <span style="color:#ffffff !important;"> - ${m.dosage}</span>
         </div>
       `).join("")
-    : "<div style='font-size:12.5px; color:#94a3b8; padding:6px 0;'>No active prescribed medications.</div>";
+    : `<div style='font-size:12.5px; color:#94a3b8; padding:6px 0;' data-i18n="noActiveMeds">${trNoMeds}</div>`;
 
   healthCardDetails.innerHTML = `
     <div class="health-info-box">
-      <h4>👤 Patient Profile</h4>
-      <p><strong>Name:</strong> ${data.name}</p>
-      <p><strong>Contact:</strong> ${data.contact}</p>
-      <p><strong>Delivery Address:</strong> ${data.address || "Sector 15, Gurgaon"}</p>
+      <h4>👤 ${trPatientProfile}</h4>
+      <p><strong>${trName}:</strong> ${data.name}</p>
+      <p><strong>${trContact}:</strong> ${data.contact}</p>
+      <p><strong>${trAddress}:</strong> ${data.address || "Sector 15, Gurgaon"}</p>
     </div>
 
     <div class="health-info-box">
-      <h4 style="color:#f59e0b;">⚠️ My Medicine Allergies (Protected by AI Safety Guard)</h4>
-      <p style="font-size:12px; color:#cbd5e1; margin-bottom:4px;">Medicines on this denylist are permanently blocked by the 12-agent graph from ever being recommended:</p>
+      <h4 style="color:#f59e0b;">⚠️ ${trAllergiesTitle}</h4>
+      <p style="font-size:12px; color:#cbd5e1; margin-bottom:4px;">${trAllergiesDesc}</p>
       <div id="allergiesListContainer">
         ${allergiesList}
       </div>
       <div class="add-allergy-row">
-        <input type="text" id="newAllergyInput" placeholder="Add allergy (e.g. Sulfa, Peanuts, Ibuprofen)..." />
-        <button class="btn-add-allergy" onclick="submitNewAllergy()">+ Add & Encrypt</button>
+        <input type="text" id="newAllergyInput" placeholder="${trAllergyPh}" />
+        <button class="btn-add-allergy" onclick="submitNewAllergy()">${trAddAllergy}</button>
       </div>
     </div>
 
     <div class="health-info-box">
-      <h4 style="color:#38bdf8;">💊 Active Medications History</h4>
+      <h4 style="color:#38bdf8;">💊 ${trActiveMedsTitle}</h4>
       ${medsList}
     </div>
 
     <div class="health-info-box">
-      <h4 style="color:#10b981;">🔒 Safe Auto-Pay Limit Guardrail</h4>
-      <p>Current server-enforced cap: <strong>₹${Number(data.payment_limit || 1500).toFixed(0)}</strong></p>
-      <p style="font-size:12px; color:#94a3b8;">Any medicine order higher than this threshold is denied automatically and requires 2-step manual approval.</p>
+      <h4 style="color:#10b981;">🔒 ${trAutoPayTitle}</h4>
+      <p>${trCurrentCap}: <strong>₹${Number(data.payment_limit || 1500).toFixed(0)}</strong></p>
+      <p style="font-size:12px; color:#94a3b8;">${trAutoPayDesc}</p>
       <div class="add-allergy-row" style="margin-top:6px;">
-        <input type="number" id="newLimitInput" placeholder="New limit in ₹ (e.g. 2000)" value="${data.payment_limit || 1500}" />
-        <button class="btn-add-allergy" onclick="submitNewPaymentLimit()">Update Limit</button>
+        <input type="number" id="newLimitInput" placeholder="${trLimitPh}" value="${data.payment_limit || 1500}" />
+        <button class="btn-add-allergy" onclick="submitNewPaymentLimit()">${trUpdateLimit}</button>
       </div>
     </div>
   `;
@@ -2509,6 +2627,7 @@ let userGpsCircle = null;
 let pinnedLat = 28.4682;
 let pinnedLng = 77.0425;
 let pinnedAddress = "Sector 15, Gurgaon";
+let pinnedVillage = "Sector 15";
 
 window.switchLocationTab = function(tabName) {
   const btnMap = document.getElementById("btnLocTabMap");
@@ -2672,14 +2791,17 @@ async function applyDetectedGpsLocation(lat, lng, detail = "") {
       const data = await res.json();
       if (data && data.address) {
         const a = data.address;
+        const detectedVil = a.village || a.hamlet || a.suburb || a.town || a.neighbourhood || a.residential || a.city_district || a.city || "Local Village";
+        pinnedVillage = detectedVil;
         const parts = [];
-        if (a.road || a.pedestrian || a.suburb) parts.push(a.road || a.pedestrian || a.suburb);
+        if (a.village || a.hamlet || a.suburb || a.road || a.pedestrian) parts.push(a.village || a.hamlet || a.suburb || a.road || a.pedestrian);
         if (a.neighbourhood || a.residential) parts.push(a.neighbourhood || a.residential);
-        if (a.city || a.town || a.city_district || a.state_district) parts.push(a.city || a.town || a.city_district || a.state_district);
+        if (a.town || a.city || a.city_district || a.state_district) parts.push(a.town || a.city || a.city_district || a.state_district);
         if (a.postcode) parts.push(a.postcode);
         readableAddress = parts.filter(Boolean).join(", ");
       } else if (data && data.display_name) {
         readableAddress = data.display_name.split(",").slice(0, 3).join(",").trim();
+        pinnedVillage = data.display_name.split(",")[0].trim();
       }
     }
   } catch (e) {
@@ -2743,7 +2865,9 @@ async function updatePinnedLocation(lat, lng) {
       const data = await res.json();
       if (data && data.display_name) {
         const addrParts = data.address || {};
-        const road = addrParts.road || addrParts.suburb || addrParts.neighbourhood || "Sector 15";
+        const detectedVil = addrParts.village || addrParts.hamlet || addrParts.suburb || addrParts.neighbourhood || addrParts.town || addrParts.city_district || addrParts.city || "Local Area";
+        pinnedVillage = detectedVil;
+        const road = addrParts.road || addrParts.suburb || addrParts.neighbourhood || detectedVil;
         const city = addrParts.city || addrParts.town || addrParts.state_district || "Gurgaon";
         const postcode = addrParts.postcode || "122001";
         pinnedAddress = `${road}, ${city} - ${postcode}`;
@@ -2783,6 +2907,7 @@ window.searchLocationOnMap = async function() {
         pinnedLat = lat;
         pinnedLng = lon;
         pinnedAddress = results[0].display_name.split(",").slice(0, 3).join(",");
+        pinnedVillage = query.split(",")[0].trim() || results[0].display_name.split(",")[0].trim();
 
         if (mapPickerInstance && mapMarker) {
           mapPickerInstance.setView([lat, lon], 15);
@@ -2853,7 +2978,8 @@ window.saveManualLocation = async function() {
   const city = manualCityInput.value.trim();
   const pin = manualPincodeInput.value.trim();
   const fullAddr = `${addr}${city ? ', ' + city : ''}${pin ? ' - ' + pin : ''}`;
-  await saveLocationToProfile(fullAddr);
+  pinnedVillage = addr || city || "Local Area";
+  await saveLocationToProfile(fullAddr, pinnedLat, pinnedLng);
   closeLocationModal();
 };
 
@@ -2862,6 +2988,7 @@ async function saveLocationToProfile(newAddress, lat = 28.4595, lng = 77.0266) {
     newAddress = `Location (${lat.toFixed(4)}° N, ${lng.toFixed(4)}° E)`;
   }
   newAddress = newAddress.trim();
+  const villageName = pinnedVillage || (newAddress ? newAddress.split(",")[0].trim() : "Sector 15");
 
   // 1. Optimistically update in-memory user object
   if (!currentUser) {
@@ -2870,6 +2997,7 @@ async function saveLocationToProfile(newAddress, lat = 28.4595, lng = 77.0266) {
       name: "Rahul Sharma",
       role: "customer",
       address: newAddress,
+      village: villageName,
       latitude: lat,
       longitude: lng,
       contact: "+91 98765 43210",
@@ -2882,14 +3010,21 @@ async function saveLocationToProfile(newAddress, lat = 28.4595, lng = 77.0266) {
     currentUserId = currentUser.id;
   } else {
     currentUser.address = newAddress;
+    currentUser.village = villageName;
     currentUser.latitude = lat;
     currentUser.longitude = lng;
+  }
+
+  // Update nearLocationName element in UI
+  const nearLoc = document.getElementById("nearLocationName");
+  if (nearLoc) {
+    nearLoc.textContent = villageName;
   }
 
   // 2. Persist to localStorage immediately
   try {
     localStorage.setItem("mediconnect_user", JSON.stringify(currentUser));
-    localStorage.setItem("mediconnect_user_location", JSON.stringify({ address: newAddress, lat, lng }));
+    localStorage.setItem("mediconnect_user_location", JSON.stringify({ address: newAddress, village: villageName, lat, lng }));
   } catch (e) {
     console.warn("Could not save to localStorage", e);
   }
@@ -2942,15 +3077,36 @@ async function saveLocationToProfile(newAddress, lat = 28.4595, lng = 77.0266) {
 }
 
 /* ==========================================================
-   APP LANGUAGES SYSTEM (INDIAN LANGUAGES SUPPORT)
+   APP LANGUAGES SYSTEM (INDIAN LANGUAGES SUPPORT - FULL LOCALIZATION)
 ========================================================== */
 let currentAppLang = localStorage.getItem("mediconnect_lang") || "en";
+
+function t(key, fallback = "") {
+  const tr = (typeof APP_TRANSLATIONS !== "undefined" && APP_TRANSLATIONS[currentAppLang]) ? APP_TRANSLATIONS[currentAppLang] : null;
+  if (tr && tr[key]) return tr[key];
+  if (typeof APP_TRANSLATIONS !== "undefined" && APP_TRANSLATIONS.en && APP_TRANSLATIONS.en[key]) return APP_TRANSLATIONS.en[key];
+  return fallback || key;
+}
+window.t = t;
 
 const APP_TRANSLATIONS = {
   en: {
     name: "English",
     native: "English",
     voiceLang: "en-IN",
+    tabTriage: "Triage",
+    tabStores: "Pharmacies",
+    tabOrders: "Orders",
+    tabCard: "Health Card",
+    tabSos: "SOS",
+    accountLabel: "Account",
+    signOutBtn: "Sign Out",
+    emergencyBtn: "Emergency",
+    outForDelivery: "Medicine Out for Delivery (~15 mins)",
+    viewProfileBtn: "👤 View Profile",
+    switchAccountBtn: "Switch Account",
+    changeLocationBtn: "Change Location 📍",
+    logoutBtn: "🚪 Log Out",
     voiceTitle: "Where does it hurt? (क्या तकलीफ है?)",
     voiceDesc: "Tap the 3D microphone to speak naturally, or pick a common health problem below:",
     micTap: "Speak Symptoms",
@@ -2959,13 +3115,105 @@ const APP_TRANSLATIONS = {
     headache: "Headache / Body Pain",
     cold: "Cold & Sore Throat",
     acidity: "Stomach Gas & Acidity",
-    chestPain: "Severe Chest Pain",
-    authSub: "Hyperlocal Healthcare & Direct Chemist Network"
+    chestPain: "Severe Chest Pain (Emergency)",
+    authSub: "Hyperlocal Healthcare & Direct Chemist Network",
+    trustedStoresTitle: "🏥 Trusted Nearby Medical Stores",
+    bestLocalPrices: "Best Local Prices",
+    stockNear: "Chemists with confirmed stock near",
+    verifiedChemistsTitle: "🏥 Verified Neighborhood Chemists",
+    verifiedChemistsSub: "Order genuine generic medicines with verified stock, 5-10% capped commissions, and direct chemist chat.",
+    searchStorePlaceholder: "Search medicine (e.g. Paracetamol, Cetirizine, Omeprazole)...",
+    searchStoresBtn: "Search Stores",
+    ordersTitle: "📦 Orders & Booked Appointments",
+    ordersSub: "Track your previous ordered medicines and booked hospital ER admission passes.",
+    refreshOrdersBtn: "🔄 Refresh List",
+    orderedMedsLabel: "💊 Ordered Medicines",
+    bookedApptsLabel: "🏥 Booked Appointments",
+    loadingOrders: "Loading your orders...",
+    loadingAppts: "Loading your appointments...",
+    noOrders: "No medicine orders yet. Search above to order generic medicines!",
+    noAppts: "No emergency appointments booked.",
+    healthCardTitle: "🛡️ Safe Health Profile & Guardrails",
+    healthCardSub: "AES-256 encrypted medical records, allergy denylist, and server-side payment protection limit.",
+    switchUserBtn: "👤 Switch User / Login",
+    patientProfile: "Patient Profile",
+    nameLabel: "Full Name",
+    phoneLabel: "Mobile Number",
+    emailLabel: "Email Address",
+    contactLabel: "Contact",
+    addressLabel: "Delivery Address",
+    coordsLabel: "GPS Coordinates",
+    allergiesLabel: "Encrypted Allergies (At Rest)",
+    spendingCapLabel: "Auto-Pay Spending Cap",
+    sosContactsLabel: "Emergency SOS Contacts",
+    accountCreatedLabel: "Account Created",
+    editProfileBtn: "✏️ Edit Profile Details",
+    cancelBtn: "Cancel",
+    saveChangesBtn: "✓ Save Changes",
+    allergiesTitle: "My Medicine Allergies (Protected by AI Safety Guard)",
+    allergiesDesc: "Medicines on this denylist are permanently blocked by the 12-agent graph from ever being recommended:",
+    allergyPlaceholder: "Add allergy (e.g. Sulfa, Peanuts, Ibuprofen)...",
+    addAllergyBtn: "+ Add & Encrypt",
+    allergicTo: "Allergic to",
+    noAllergies: "No known allergies recorded. Add any adverse reactions below:",
+    activeMedsTitle: "Active Medications History",
+    noActiveMeds: "No active prescribed medications.",
+    autoPayTitle: "Safe Auto-Pay Limit Guardrail",
+    currentCap: "Current server-enforced cap",
+    autoPayDesc: "Any medicine order higher than this threshold is denied automatically and requires 2-step manual approval.",
+    limitPlaceholder: "New limit in ₹ (e.g. 2000)",
+    updateLimitBtn: "Update Limit",
+    emergencyTabTitle: "Immediate Emergency Ambulance SOS (108)",
+    emergencyTabSub: "One-touch 108 Emergency dispatch with real-time GPS broadcast to the closest trauma hospital & ICU ER admission reservation.",
+    dispatchAmbulanceBtn: "🚨 DISPATCH AMBULANCE NOW",
+    ambulanceDispatched: "AMBULANCE DISPATCHED",
+    sosModalTitle: "Do you need an Ambulance?",
+    sosModalSub: "This will immediately notify 108 Emergency Response and reserve an ICU trauma bed at the nearest hospital.",
+    confirmSosBtn: "YES, DISPATCH NOW",
+    selectLocationTitle: "Select Location",
+    selectLocationSub: "For medicine delivery and hospital discovery",
+    locTabMap: "🗺️ Google Maps",
+    locTabGps: "🛰️ Auto GPS",
+    locTabManual: "✏️ Manual Entry",
+    mapSearchPh: "Search locality, street, or landmark...",
+    findBtn: "Find",
+    detectLocationGps: "Detect My Current Location (Live GPS)",
+    mapPinHint: "👆 Click or drag map pin to set exact location",
+    selectedMapLocation: "📍 Selected Map Location",
+    confirmLocationBtn: "Confirm Pinned Location",
+    autoDetectTitle: "Auto-Detect Current Location",
+    autoDetectSub: "Use browser GPS & Geolocation to pinpoint your exact coordinates",
+    detectLocationGpsBtn: "📍 Detect My Location via GPS",
+    deliveryAddressLabel: "Delivery Address / Street / Society",
+    deliveryAddressPh: "e.g. Flat 302, Palm Heights, Sector 15",
+    cityLabel: "City / Sector / Village",
+    pincodeLabel: "PIN Code",
+    saveLocationBtn: "Save Delivery Location",
+    profileTitle: "Patient Profile",
+    profileSub: "Details entered when your account was created",
+    inStock: "Has in stock",
+    orderDelivery: "Order for Delivery",
+    callShop: "📞 Call Shop",
+    kmAway: "km away",
+    findingStores: "Finding trusted neighborhood medical stores..."
   },
   hi: {
     name: "Hindi",
     native: "हिन्दी",
     voiceLang: "hi-IN",
+    tabTriage: "जांच व सलाह",
+    tabStores: "दवा दुकानें",
+    tabOrders: "ऑर्डर्स",
+    tabCard: "हेल्थ कार्ड",
+    tabSos: "आपातकालीन",
+    accountLabel: "खाता",
+    signOutBtn: "लॉग आउट",
+    emergencyBtn: "आपातकालीन",
+    outForDelivery: "दवा डिलीवरी के लिए निकल चुकी है (~15 मिनट)",
+    viewProfileBtn: "👤 प्रोफाइल देखें",
+    switchAccountBtn: "खाता बदलें",
+    changeLocationBtn: "स्थान बदलें 📍",
+    logoutBtn: "🚪 लॉग आउट",
     voiceTitle: "आपको क्या तकलीफ है? (कहाँ दर्द है?)",
     voiceDesc: "माइक बटन दबाकर बोलें, या नीचे से कोई समस्या चुनें:",
     micTap: "लक्षण बोलें",
@@ -2975,12 +3223,104 @@ const APP_TRANSLATIONS = {
     cold: "सर्दी और गले में खराश",
     acidity: "पेट गैस और एसिडिटी",
     chestPain: "सीने में तेज दर्द (आपातकालीन)",
-    authSub: "स्थानीय स्वास्थ्य सेवा और दवा दुकान नेटवर्क"
+    authSub: "स्थानीय स्वास्थ्य सेवा और दवा दुकान नेटवर्क",
+    trustedStoresTitle: "🏥 नजदीकी विश्वसनीय मेडिकल स्टोर",
+    bestLocalPrices: "सर्वोत्तम स्थानीय कीमतें",
+    stockNear: "उपलब्ध स्टॉक वाले मेडिकल स्टोर निकट",
+    verifiedChemistsTitle: "🏥 सत्यापित नजदीकी केमिस्ट",
+    verifiedChemistsSub: "सत्यापित स्टॉक, 5-10% सीमित कमीशन और सीधे केमिस्ट चैट के साथ असली जेनेरिक दवाएं ऑर्डर करें।",
+    searchStorePlaceholder: "दवा खोजें (उदा. Paracetamol, Cetirizine)...",
+    searchStoresBtn: "स्टोर खोजें",
+    ordersTitle: "📦 ऑर्डर्स और बुक किए गए अपॉइंटमेंट",
+    ordersSub: "अपनी पूर्व में ऑर्डर की गई दवाओं और बुक किए गए अस्पताल पास ट्रैक करें।",
+    refreshOrdersBtn: "🔄 सूची रीफ्रेश करें",
+    orderedMedsLabel: "💊 ऑर्डर की गई दवाएं",
+    bookedApptsLabel: "🏥 बुक किए गए अपॉइंटमेंट",
+    loadingOrders: "आपके ऑर्डर्स लोड हो रहे हैं...",
+    loadingAppts: "आपके अपॉइंटमेंट लोड हो रहे हैं...",
+    noOrders: "अभी तक कोई दवा ऑर्डर नहीं। जेनेरिक दवाएं ऑर्डर करने के लिए ऊपर खोजें!",
+    noAppts: "कोई आपातकालीन अपॉइंटमेंट बुक नहीं है।",
+    healthCardTitle: "🛡️ सुरक्षित स्वास्थ्य प्रोफाइल और सुरक्षा सीमा",
+    healthCardSub: "AES-256 एन्क्रिप्टेड मेडिकल रिकॉर्ड, एलर्जी प्रतिबंध सूची, और सर्वर-साइड भुगतान सुरक्षा सीमा।",
+    switchUserBtn: "👤 उपयोगकर्ता बदलें / लॉगिन",
+    patientProfile: "मरीज प्रोफाइल",
+    nameLabel: "पूरा नाम",
+    phoneLabel: "मोबाइल नंबर",
+    emailLabel: "ईमेल पता",
+    contactLabel: "संपर्क",
+    addressLabel: "डिलीवरी का पता",
+    coordsLabel: "जीपीएस निर्देशांक",
+    allergiesLabel: "एन्क्रिप्टेड एलर्जी",
+    spendingCapLabel: "ऑटो-पे खर्च सीमा",
+    sosContactsLabel: "आपातकालीन संपर्क",
+    accountCreatedLabel: "खाता निर्माण",
+    editProfileBtn: "✏️ प्रोफाइल विवरण बदलें",
+    cancelBtn: "रद्द करें",
+    saveChangesBtn: "✓ बदलाव सहेजें",
+    allergiesTitle: "मेरी दवा एलर्जी (एआई सुरक्षा गार्ड द्वारा सुरक्षित)",
+    allergiesDesc: "इस सूची की दवाएं 12-एजेंट सिस्टम द्वारा कभी भी सुझाई नहीं जाएंगी:",
+    allergyPlaceholder: "एलर्जी जोड़ें (उदा. Sulfa, Peanuts, Ibuprofen)...",
+    addAllergyBtn: "+ जोड़ें व एन्क्रिप्ट करें",
+    allergicTo: "एलर्जी",
+    noAllergies: "कोई ज्ञात एलर्जी दर्ज नहीं है। नीचे कोई भी प्रतिकूल प्रतिक्रिया जोड़ें:",
+    activeMedsTitle: "सक्रिय दवाओं का इतिहास",
+    noActiveMeds: "कोई सक्रिय दवा निर्धारित नहीं है।",
+    autoPayTitle: "सुरक्षित ऑटो-पे सीमा",
+    currentCap: "वर्तमान सर्वर सीमा",
+    autoPayDesc: "इस सीमा से अधिक का कोई भी दवा ऑर्डर स्वतः अस्वीकृत होगा और 2-चरणीय स्वीकृति आवश्यक होगी।",
+    limitPlaceholder: "₹ में नई सीमा (उदा. 2000)",
+    updateLimitBtn: "सीमा अपडेट करें",
+    emergencyTabTitle: "तत्काल आपातकालीन एम्बुलेंस एसओएस (108)",
+    emergencyTabSub: "निकटतम ट्रॉमा अस्पताल और आईसीयू में आरक्षण के साथ रीयल-टाइम जीपीएस प्रसारण।",
+    dispatchAmbulanceBtn: "🚨 अभी एम्बुलेंस भेजें",
+    ambulanceDispatched: "एम्बुलेंस रवाना हो चुकी है",
+    sosModalTitle: "क्या आपको एम्बुलेंस चाहिए?",
+    sosModalSub: "यह तुरंत 108 आपातकालीन सेवा को सूचित करेगा और नजदीकी अस्पताल में आईसीयू बेड आरक्षित करेगा।",
+    confirmSosBtn: "हाँ, अभी भेजें",
+    selectLocationTitle: "स्थान चुनें",
+    selectLocationSub: "दवा डिलीवरी और अस्पताल खोज के लिए",
+    locTabMap: "🗺️ गूगल मैप्स",
+    locTabGps: "🛰️ ऑटो जीपीएस",
+    locTabManual: "✏️ मैन्युअल पता",
+    mapSearchPh: "इलाका, सड़क या लैंडमार्क खोजें...",
+    findBtn: "खोजें",
+    detectLocationGps: "मेरा वर्तमान स्थान खोजें (लाइव जीपीएस)",
+    mapPinHint: "👆 सटीक स्थान सेट करने के लिए पिन पर क्लिक या ड्रैग करें",
+    selectedMapLocation: "📍 चयनित मैप स्थान",
+    confirmLocationBtn: "चयनित स्थान की पुष्टि करें",
+    autoDetectTitle: "वर्तमान स्थान स्वतः खोजें",
+    autoDetectSub: "सटीक निर्देशांक प्राप्त करने के लिए ब्राउज़र जीपीएस का उपयोग करें",
+    detectLocationGpsBtn: "📍 जीपीएस से मेरा स्थान खोजें",
+    deliveryAddressLabel: "डिलीवरी का पता / सड़क / सोसायटी",
+    deliveryAddressPh: "उदा. फ्लैट 302, पाम हाइट्स",
+    cityLabel: "शहर / सेक्टर / गांव",
+    pincodeLabel: "पिन कोड",
+    saveLocationBtn: "डिलीवरी स्थान सहेजें",
+    profileTitle: "मरीज प्रोफाइल",
+    profileSub: "खाता बनाते समय दर्ज किया गया विवरण",
+    inStock: "स्टॉक उपलब्ध",
+    orderDelivery: "डिलीवरी के लिए ऑर्डर करें",
+    callShop: "📞 दुकान पर कॉल करें",
+    kmAway: "किमी दूर",
+    findingStores: "नजदीकी विश्वसनीय मेडिकल स्टोर खोज रहे हैं..."
   },
   te: {
     name: "Telugu",
     native: "తెలుగు",
     voiceLang: "te-IN",
+    tabTriage: "ఆరోగ్య సలహా",
+    tabStores: "మందుల షాపులు",
+    tabOrders: "ఆర్డర్లు",
+    tabCard: "హెల్త్ కార్డ్",
+    tabSos: "అత్యవసరం",
+    accountLabel: "ఖాతా",
+    signOutBtn: "లాగ్ అవుట్",
+    emergencyBtn: "అత్యవసరం",
+    outForDelivery: "మందుల డెలివరీ బయలుదేరింది (~15 నిమిషాలు)",
+    viewProfileBtn: "👤 ప్రొఫైల్ చూడండి",
+    switchAccountBtn: "ఖాతా మార్చండి",
+    changeLocationBtn: "స్థానం మార్చండి 📍",
+    logoutBtn: "🚪 లాగ్ అవుట్",
     voiceTitle: "మీకు ఎక్కడ నొప్పిగా ఉంది? (ఆరోగ్య సమస్య)",
     voiceDesc: "మైక్ నొక్కి మాట్లాడండి లేదా కింద ఒక సమస్యను ఎంచుకోండి:",
     micTap: "మాట్లాడండి",
@@ -2990,12 +3330,104 @@ const APP_TRANSLATIONS = {
     cold: "జలుబు & గొంతు నొప్పి",
     acidity: "కడుపు మంట & గ్యాస్",
     chestPain: "తీవ్రమైన ఛాతీ నొప్పి (అత్యవసరం)",
-    authSub: "హైపర్‌లోకల్ హెల్త్‌కేర్ & మెడికల్ నెట్‌వర్క్"
+    authSub: "హైపర్‌లోకల్ హెల్త్‌కేర్ & మెడికల్ నెట్‌వర్క్",
+    trustedStoresTitle: "🏥 సమీప విశ్వసనీయ మెడికల్ దుకాణాలు",
+    bestLocalPrices: "ఉత్తమ స్థానిక ధరలు",
+    stockNear: "స్టాక్ అందుబాటులో ఉన్న దుకాణాలు సమీపంలో",
+    verifiedChemistsTitle: "🏥 ధృవీకరించబడిన మెడికల్ షాపులు",
+    verifiedChemistsSub: "ధృవీకరించబడిన స్టాక్, తక్కువ కమీషన్ మరియు డైరెక్ట్ చాట్‌తో అసలైన జెనెరిక్ మందులను ఆర్డర్ చేయండి.",
+    searchStorePlaceholder: "మందును వెతకండి (ఉదా. Paracetamol, Cetirizine)...",
+    searchStoresBtn: "షాపులను వెతకండి",
+    ordersTitle: "📦 ఆర్డర్లు & బుక్ చేసిన అపాయింట్‌మెంట్లు",
+    ordersSub: "మీ గత మందుల ఆర్డర్లు మరియు ఆసుపత్రి అడ్మిషన్ పాస్‌లను ట్రాక్ చేయండి.",
+    refreshOrdersBtn: "🔄 జాబితా రీఫ్రెష్ చేయండి",
+    orderedMedsLabel: "💊 ఆర్డర్ చేసిన మందులు",
+    bookedApptsLabel: "🏥 బుక్ చేసిన అపాయింట్‌మెంట్లు",
+    loadingOrders: "మీ ఆర్డర్లు లోడ్ అవుతున్నాయి...",
+    loadingAppts: "మీ అపాయింట్‌మెంట్లు లోడ్ అవుతున్నాయి...",
+    noOrders: "ఇంకా ఎటువంటి ఆర్డర్లు లేవు. జెనెరిక్ మందులను ఆర్డర్ చేయడానికి పైన వెతకండి!",
+    noAppts: "ఎమర్జెన్సీ అపాయింట్‌మెంట్లు ఏవీ లేవు.",
+    healthCardTitle: "🛡️ సురక్షిత ఆరోగ్య ప్రొఫైల్ & రక్షణ పరిమితి",
+    healthCardSub: "AES-256 ఎన్‌క్రిప్టెడ్ రికార్డులు, అలెర్జీ నిరోధక జాబితా, మరియు చెల్లింపు రక్షణ పరిమితి.",
+    switchUserBtn: "👤 వినియోగదారుని మార్చండి / లాగిన్",
+    patientProfile: "పేషెంట్ ప్రొఫైల్",
+    nameLabel: "పూర్తి పేరు",
+    phoneLabel: "మొబైల్ సంఖ్య",
+    emailLabel: "ఈమెయిల్ చిరునామా",
+    contactLabel: "సంప్రదించండి",
+    addressLabel: "డెలివరీ చిరునామా",
+    coordsLabel: "జీపీఎస్ కోఆర్డినేట్లు",
+    allergiesLabel: "ఎన్‌క్రిప్ట్ చేసిన అలెర్జీలు",
+    spendingCapLabel: "ఆటో-పే వ్యయ పరిమితి",
+    sosContactsLabel: "అత్యవసర పరిచయాలు",
+    accountCreatedLabel: "ఖాతా సృష్టి",
+    editProfileBtn: "✏️ ప్రొఫైల్ వివరాలను మార్చండి",
+    cancelBtn: "రద్దు చేయండి",
+    saveChangesBtn: "✓ మార్పులను సేవ్ చేయండి",
+    allergiesTitle: "నా మందుల అలెర్జీలు (AI రక్షణ కవచం)",
+    allergiesDesc: "ఈ జాబితాలోని మందులు AI సిఫార్సు చేయకుండా శాశ్వతంగా నిరోధించబడతాయి:",
+    allergyPlaceholder: "అలెర్జీని జోడించండి (ఉదా. Sulfa, Peanuts)...",
+    addAllergyBtn: "+ జోడించి ఎన్‌క్రిప్ట్ చేయండి",
+    allergicTo: "అలెర్జీ",
+    noAllergies: "ఎటువంటి అలెర్జీలు నమోదు కాలేదు. ప్రతికూల ప్రతిచర్యలను కింద జోడించండి:",
+    activeMedsTitle: "ప్రస్తుతం వాడుతున్న మందుల చరిత్ర",
+    noActiveMeds: "ప్రస్తుత మందుల వివరాలు లేవు.",
+    autoPayTitle: "సురక్షిత ఆటో-పే పరిమితి",
+    currentCap: "ప్రస్తుత సర్వర్ పరిమితి",
+    autoPayDesc: "ఈ పరిమితి కంటే ఎక్కువ ఉన్న ఆర్డర్లకు ప్రత్యేక ఆమోదం అవసరం.",
+    limitPlaceholder: "కొత్త పరిమితి ₹ లో",
+    updateLimitBtn: "పరిమితిని మార్చండి",
+    emergencyTabTitle: "తక్షణ అత్యవసర అంబులెన్స్ SOS (108)",
+    emergencyTabSub: "సమీప ట్రామా ఆసుపత్రికి లైవ్ జీపీఎస్ సమాచారం & ICU బెడ్ రిజర్వేషన్.",
+    dispatchAmbulanceBtn: "🚨 అంబులెన్స్‌ను ఇప్పుడే పంపండి",
+    ambulanceDispatched: "అంబులెన్స్ బయలుదేరింది",
+    sosModalTitle: "మీకు అంబులెన్స్ అవసరమా?",
+    sosModalSub: "ఇది తక్షణమే 108 ఎమర్జెన్సీ విభాగానికి సమాచారం అందించి సమీప ఆసుపత్రిలో బెడ్ రిజర్వ్ చేస్తుంది.",
+    confirmSosBtn: "అవును, ఇప్పుడే పంపండి",
+    selectLocationTitle: "స్థానాన్ని ఎంచుకోండి",
+    selectLocationSub: "మందుల డెలివరీ మరియు ఆసుపత్రి శోధన కోసం",
+    locTabMap: "🗺️ గూగుల్ మ్యాప్స్",
+    locTabGps: "🛰️ ఆటో GPS",
+    locTabManual: "✏️ మాన్యువల్ ఎంట్రీ",
+    mapSearchPh: "ప్రాంతం, వీధి లేదా ల్యాండ్‌మార్క్ వెతకండి...",
+    findBtn: "వెతకండి",
+    detectLocationGps: "నా ప్రస్తుత స్థానాన్ని గుర్తించండి (లైవ్ GPS)",
+    mapPinHint: "👆 ఖచ్చితమైన స్థానం కోసం పిన్‌ను లాగండి లేదా నొక్కండి",
+    selectedMapLocation: "📍 ఎంచుకున్న మ్యాప్ స్థానం",
+    confirmLocationBtn: "ఎంచుకున్న స్థానాన్ని నిర్ధారించండి",
+    autoDetectTitle: "ప్రస్తుత స్థానాన్ని ఆటోమేటిక్‌గా గుర్తించండి",
+    autoDetectSub: "ఖచ్చితమైన కోఆర్డినేట్లను పొందడానికి బ్రౌజర్ GPS ఉపయోగించండి",
+    detectLocationGpsBtn: "📍 GPS ద్వారా నా స్థానాన్ని గుర్తించండి",
+    deliveryAddressLabel: "డెలివరీ చిరునామా / వీధి / గ్రామం",
+    deliveryAddressPh: "ఉదా. ఫ్లాట్ 302, మెయిన్ రోడ్",
+    cityLabel: "నగరం / గ్రామం",
+    pincodeLabel: "పిన్ కోడ్",
+    saveLocationBtn: "డెలివరీ స్థానాన్ని సేవ్ చేయండి",
+    profileTitle: "పేషెంట్ ప్రొఫైల్",
+    profileSub: "ఖాతా సృష్టించిన వివరాలు",
+    inStock: "స్టాక్ ఉంది",
+    orderDelivery: "డెలివరీ కోసం ఆర్డర్ చేయండి",
+    callShop: "📞 షాపుకు కాల్ చేయండి",
+    kmAway: "కి.మీ దూరం",
+    findingStores: "సమీప మెడికల్ దుకాణాలను వెతుకుతోంది..."
   },
   ta: {
     name: "Tamil",
     native: "தமிழ்",
     voiceLang: "ta-IN",
+    tabTriage: "பரிசோதனை",
+    tabStores: "மருந்தகங்கள்",
+    tabOrders: "ஆர்டர்கள்",
+    tabCard: "சுகாதார அட்டை",
+    tabSos: "அவசரம்",
+    accountLabel: "கணக்கு",
+    signOutBtn: "வெளியேறு",
+    emergencyBtn: "அவசரம்",
+    outForDelivery: "மருந்து டெலிவரிக்கு புறப்பட்டது (~15 நிமிடங்கள்)",
+    viewProfileBtn: "👤 சுயவிவரம்",
+    switchAccountBtn: "கணக்கு மாற்றவும்",
+    changeLocationBtn: "இடத்தை மாற்றவும் 📍",
+    logoutBtn: "🚪 வெளியேறு",
     voiceTitle: "உங்களுக்கு எங்கு வலிக்கிறது?",
     voiceDesc: "மைக் பொத்தானை அழுத்தி பேசவும், அல்லது சிக்கலைத் தேர்ந்தெடுக்கவும்:",
     micTap: "பேசவும்",
@@ -3005,12 +3437,104 @@ const APP_TRANSLATIONS = {
     cold: "சளி மற்றும் தொண்டை வலி",
     acidity: "வயிற்று வலி & வாயு",
     chestPain: "கடுமையான நெஞ்சு வலி (அவசரம்)",
-    authSub: "உள்ளூர் சுகாதார சேவை & மருந்தக நெட்வொர்க்"
+    authSub: "உள்ளூர் சுகாதார சேவை & மருந்தக நெட்வொர்க்",
+    trustedStoresTitle: "🏥 அருகிலுள்ள நம்பகமான மருந்தகங்கள்",
+    bestLocalPrices: "சிறந்த உள்ளூர் விலைகள்",
+    stockNear: "மருந்துகள் இருப்பில் உள்ள கடைகள் அருகில்",
+    verifiedChemistsTitle: "🏥 சரிபார்க்கப்பட்ட மருந்தகங்கள்",
+    verifiedChemistsSub: "சரிபார்க்கப்பட்ட இருப்புடன் குறைந்த விலையில் அசல் மருந்துகளை ஆர்டர் செய்யுங்கள்.",
+    searchStorePlaceholder: "மருந்தைத் தேடுங்கள்...",
+    searchStoresBtn: "கடைகளைத் தேடுங்கள்",
+    ordersTitle: "📦 ஆர்டர்கள் & முன்பதிவுகள்",
+    ordersSub: "உங்கள் முந்தைய மருந்து ஆர்டர்களைக் கண்காணிக்கவும்.",
+    refreshOrdersBtn: "🔄 பட்டியலைப் புதுப்பிக்கவும்",
+    orderedMedsLabel: "💊 ஆர்டர் செய்த மருந்துகள்",
+    bookedApptsLabel: "🏥 முன்பதிவுகள்",
+    loadingOrders: "ஆர்டர்கள் ஏற்றப்படுகின்றன...",
+    loadingAppts: "முன்பதிவுகள் ஏற்றப்படுகின்றன...",
+    noOrders: "ஆர்டர்கள் எதுவும் இல்லை.",
+    noAppts: "அவசர முன்பதிவுகள் எதுவும் இல்லை.",
+    healthCardTitle: "🛡️ பாதுகாப்பான சுகாதார அட்டை",
+    healthCardSub: "AES-256 குறியாக்கப்பட்ட பதிவுகள் மற்றும் பாதுகாப்பு வரம்பு.",
+    switchUserBtn: "👤 பயனர் மாற்றம் / உள்நுழைவு",
+    patientProfile: "நோயாளி சுயவிவரம்",
+    nameLabel: "முழுப் பெயர்",
+    phoneLabel: "மொபைல் எண்",
+    emailLabel: "மின்னஞ்சல் முகவரி",
+    contactLabel: "தொடர்பு",
+    addressLabel: "டெலிவரி முகவரி",
+    coordsLabel: "ஜிபிஎஸ் ஆயத்தொலைவுகள்",
+    allergiesLabel: "ஒவ்வாமைகள்",
+    spendingCapLabel: "செலவு வரம்பு",
+    sosContactsLabel: "அவசர தொடர்புகள்",
+    accountCreatedLabel: "கணக்கு உருவாக்கப்பட்டது",
+    editProfileBtn: "✏️ விவரங்களைத் திருத்துக",
+    cancelBtn: "ரத்து செய்",
+    saveChangesBtn: "✓ மாற்றங்களைச் சேமி",
+    allergiesTitle: "எனது மருந்து ஒவ்வாமைகள்",
+    allergiesDesc: "இந்த பட்டியலில் உள்ள மருந்துகள் AI ஆல் தடுக்கப்படும்:",
+    allergyPlaceholder: "ஒவ்வாமையைச் சேர்க்கவும்...",
+    addAllergyBtn: "+ சேர்",
+    allergicTo: "ஒவ்வாமை",
+    noAllergies: "ஒவ்வாமை எதுவும் பதிவு செய்யப்படவில்லை.",
+    activeMedsTitle: "தற்போதைய மருந்துகள் வரலாறு",
+    noActiveMeds: "தற்போதைய மருந்துகள் எதுவும் இல்லை.",
+    autoPayTitle: "பாதுகாப்பான கட்டண வரம்பு",
+    currentCap: "தற்போதைய வரம்பு",
+    autoPayDesc: "இந்த வரம்பிற்கு மேற்பட்ட ஆர்டர்களுக்கு ஒப்புதல் தேவை.",
+    limitPlaceholder: "புதிய வரம்பு ₹ இல்",
+    updateLimitBtn: "வரம்பைப் புதுப்பி",
+    emergencyTabTitle: "அவசர ஆம்புலன்ஸ் SOS (108)",
+    emergencyTabSub: "அருகிலுள்ள மருத்துவமனைக்கு நேரடி ஜிபிஎஸ் தகவல் & ஐசியூ படுக்கை முன்பதிவு.",
+    dispatchAmbulanceBtn: "🚨 ஆம்புலன்ஸை இப்போதே அழைக்கவும்",
+    ambulanceDispatched: "ஆம்புலன்ஸ் புறப்பட்டது",
+    sosModalTitle: "ஆம்புலன்ஸ் தேவையா?",
+    sosModalSub: "இது உடனடியாக 108 அவசரப் பிரிவுக்குத் தெரிவிக்கும்.",
+    confirmSosBtn: "ஆம், இப்போதே அனுப்பு",
+    selectLocationTitle: "இருப்பிடத்தைத் தேர்ந்தெடுக்கவும்",
+    selectLocationSub: "மருந்து விநியோகத்திற்காக",
+    locTabMap: "🗺️ கூகிள் மேப்ஸ்",
+    locTabGps: "🛰️ ஆட்டோ ஜிபிஎஸ்",
+    locTabManual: "✏️ நேரடி உள்ளீடு",
+    mapSearchPh: "பகுதியைத் தேடுங்கள்...",
+    findBtn: "கண்டுபிடி",
+    detectLocationGps: "எனது இருப்பிடத்தைக் கண்டறி",
+    mapPinHint: "👆 இடத்தை அமைக்க பின்னை நகர்த்தவும்",
+    selectedMapLocation: "📍 தேர்ந்தெடுக்கப்பட்ட இடம்",
+    confirmLocationBtn: "இடத்தை உறுதிப்படுத்து",
+    autoDetectTitle: "இருப்பிடத்தைத் தானாகக் கண்டறி",
+    autoDetectSub: "துல்லியமான ஜிபிஎஸ் இருப்பிடத்தைப் பெறுங்கள்",
+    detectLocationGpsBtn: "📍 ஜிபிஎஸ் மூலம் கண்டறி",
+    deliveryAddressLabel: "டெலிவரி முகவரி / கிராமம்",
+    deliveryAddressPh: "எ.கா. எண் 302, மெயின் ரோடு",
+    cityLabel: "நகரம் / கிராமம்",
+    pincodeLabel: "அஞ்சல் குறியீடு",
+    saveLocationBtn: "முகவரியைச் சேமி",
+    profileTitle: "நோயாளி விவரங்கள்",
+    profileSub: "பதிவு செய்யப்பட்ட விவரங்கள்",
+    inStock: "இருப்பில் உள்ளது",
+    orderDelivery: "டெலிவரிக்கு ஆர்டர் செய்",
+    callShop: "📞 கடைக்கு அழைக்கவும்",
+    kmAway: "கி.மீ தொலைவில்",
+    findingStores: "மருந்தகங்களைத் தேடுகிறது..."
   },
   bn: {
     name: "Bengali",
     native: "বাংলা",
     voiceLang: "bn-IN",
+    tabTriage: "পরামর্শ",
+    tabStores: "ফার্মেসি",
+    tabOrders: "অর্ডার",
+    tabCard: "হেলথ কার্ড",
+    tabSos: "জরুরি",
+    accountLabel: "অ্যাকাউন্ট",
+    signOutBtn: "সাইন আউট",
+    emergencyBtn: "জরুরি",
+    outForDelivery: "ওষুধ ডেলিভারির জন্য রওনা হয়েছে (~১৫ মিনিট)",
+    viewProfileBtn: "👤 প্রোফাইল দেখুন",
+    switchAccountBtn: "অ্যাকাউন্ট পরিবর্তন",
+    changeLocationBtn: "অবস্থান পরিবর্তন 📍",
+    logoutBtn: "🚪 সাইন আউট",
     voiceTitle: "আপনার কোথায় কষ্ট হচ্ছে?",
     voiceDesc: "মাইক্রোফোন ট্যাপ করে কথা বলুন বা নিচের সমস্যা নির্বাচন করুন:",
     micTap: "কথা বলুন",
@@ -3020,12 +3544,104 @@ const APP_TRANSLATIONS = {
     cold: "সর্দি ও গলা ব্যথা",
     acidity: "পেটের গ্যাস ও অম্বল",
     chestPain: "বুকে তীব্র ব্যথা (জরুরি)",
-    authSub: "স্থানীয় স্বাস্থ্যসেবা ও ফার্মেসি নেটওয়ার্ক"
+    authSub: "স্থানীয় স্বাস্থ্যসেবা ও ফার্মেসি নেটওয়ার্ক",
+    trustedStoresTitle: "🏥 কাছাকাছি বিশ্বস্ত ওষুধের দোকান",
+    bestLocalPrices: "সেরা স্থানীয় দাম",
+    stockNear: "ওষুধ মজুত থাকা দোকান কাছাকাছি",
+    verifiedChemistsTitle: "🏥 যাচাইকৃত স্থানীয় ফার্মেসি",
+    verifiedChemistsSub: "যাচাইকৃত স্টক এবং সরাসরি ফার্মেসি চ্যাট সহ জেনেরিক ওষুধ অর্ডার করুন।",
+    searchStorePlaceholder: "ওষুধ খুঁজুন...",
+    searchStoresBtn: "দোকান খুঁজুন",
+    ordersTitle: "📦 অর্ডার এবং বুকিং",
+    ordersSub: "আপনার আগের ওষুধের অর্ডার ট্র্যাক করুন।",
+    refreshOrdersBtn: "🔄 রিফ্রেশ করুন",
+    orderedMedsLabel: "💊 অর্ডার করা ওষুধ",
+    bookedApptsLabel: "🏥 বুকিং",
+    loadingOrders: "অর্ডার লোড হচ্ছে...",
+    loadingAppts: "বুকিং লোড হচ্ছে...",
+    noOrders: "কোনো অর্ডার নেই।",
+    noAppts: "জরুরি কোনো বুকিং নেই।",
+    healthCardTitle: "🛡️ নিরাপদ স্বাস্থ্য প্রোফাইল",
+    healthCardSub: "AES-256 এনক্রিপ্ট করা মেডিকেল রেকর্ড এবং সুরক্ষা সীমা।",
+    switchUserBtn: "👤 লগইন পরিবর্তন",
+    patientProfile: "রোগীর প্রোফাইল",
+    nameLabel: "পুরো নাম",
+    phoneLabel: "মোবাইল নম্বর",
+    emailLabel: "ইমেল ঠিকানা",
+    contactLabel: "যোগাযোগ",
+    addressLabel: "ডেলিভারি ঠিকানা",
+    coordsLabel: "জিপিএস স্থানাঙ্ক",
+    allergiesLabel: "অ্যালার্জি",
+    spendingCapLabel: "পেমেন্ট সীমা",
+    sosContactsLabel: "জরুরি যোগাযোগ",
+    accountCreatedLabel: "অ্যাকাউন্ট তৈরি",
+    editProfileBtn: "✏️ প্রোফাইল সম্পাদনা",
+    cancelBtn: "বাতিল",
+    saveChangesBtn: "✓ সংরক্ষণ করুন",
+    allergiesTitle: "আমার ওষুধের অ্যালার্জি",
+    allergiesDesc: "এই তালিকার ওষুধগুলি এআই দ্বারা সুপারিশ করা হবে না:",
+    allergyPlaceholder: "অ্যালার্জি যোগ করুন...",
+    addAllergyBtn: "+ যোগ করুন",
+    allergicTo: "অ্যালার্জি",
+    noAllergies: "কোনো অ্যালার্জি নথিভুক্ত নেই।",
+    activeMedsTitle: "চলতি ওষুধের ইতিহাস",
+    noActiveMeds: "কোনো চলতি ওষুধ নেই।",
+    autoPayTitle: "নিরাপদ পেমেন্ট সীমা",
+    currentCap: "বর্তমান সীমা",
+    autoPayDesc: "এই সীমার বেশি অর্ডারের জন্য অতিরিক্ত অনুমোদন প্রয়োজন।",
+    limitPlaceholder: "নতুন সীমা ₹",
+    updateLimitBtn: "সীমা পরিবর্তন",
+    emergencyTabTitle: "জরুরি অ্যাম্বুলেন্স এসওএস (১০৮)",
+    emergencyTabSub: "নিকটবর্তী ট্রমা হাসপাতালে লাইভ জিপিএস এবং আইসিইউ বেড সংরক্ষণ।",
+    dispatchAmbulanceBtn: "🚨 এখনই অ্যাম্বুলেন্স পাঠান",
+    ambulanceDispatched: "অ্যাম্বুলেন্স পাঠানো হয়েছে",
+    sosModalTitle: "আপনার কি অ্যাম্বুলেন্স দরকার?",
+    sosModalSub: "এটি অবিলম্বে ১০৮ জরুরি পরিষেবাতে বার্তা পাঠাবে।",
+    confirmSosBtn: "হ্যাঁ, এখনই পাঠান",
+    selectLocationTitle: "অবস্থান নির্বাচন করুন",
+    selectLocationSub: "ওষুধ ডেলিভারির জন্য",
+    locTabMap: "🗺️ গুগল ম্যাপ",
+    locTabGps: "🛰️ অটো জিপিএস",
+    locTabManual: "✏️ ম্যানুয়াল ঠিকানা",
+    mapSearchPh: "এলাকা খুঁজুন...",
+    findBtn: "খুঁজুন",
+    detectLocationGps: "আমার বর্তমান অবস্থান চিহ্নিত করুন",
+    mapPinHint: "👆 সঠিক অবস্থানের জন্য পিনটি সরান",
+    selectedMapLocation: "📍 নির্বাচিত অবস্থান",
+    confirmLocationBtn: "অবস্থান নিশ্চিত করুন",
+    autoDetectTitle: "স্বয়ংক্রিয় অবস্থান চিহ্নিতকরণ",
+    autoDetectSub: "সঠিক স্থানাঙ্ক পেতে জিপিএস ব্যবহার করুন",
+    detectLocationGpsBtn: "📍 জিপিএস দিয়ে সন্ধান",
+    deliveryAddressLabel: "ডেলিভারি ঠিকানা / গ্রাম",
+    deliveryAddressPh: "উদা. ফ্ল্যাট ৩০২, মেইন রোড",
+    cityLabel: "শহর / গ্রাম",
+    pincodeLabel: "পিন কোড",
+    saveLocationBtn: "ঠিকানা সংরক্ষণ করুন",
+    profileTitle: "রোগীর প্রোফাইল",
+    profileSub: "অ্যাকাউন্টের বিবরণ",
+    inStock: "স্টকে আছে",
+    orderDelivery: "ডেলিভারির জন্য অর্ডার করুন",
+    callShop: "📞 দোকানে কল করুন",
+    kmAway: "কিমি দূরে",
+    findingStores: "দোকান খোঁজা হচ্ছে..."
   },
   mr: {
     name: "Marathi",
     native: "मराठी",
     voiceLang: "mr-IN",
+    tabTriage: "तपासणी",
+    tabStores: "औषध दुकाने",
+    tabOrders: "ऑर्डर्स",
+    tabCard: "हेल्थ कार्ड",
+    tabSos: "आपत्कालीन",
+    accountLabel: "खाते",
+    signOutBtn: "लॉग आउट",
+    emergencyBtn: "तात्काळ",
+    outForDelivery: "औषध डिलिव्हरीसाठी निघाले आहे (~१५ मिनिटे)",
+    viewProfileBtn: "👤 प्रोफाइल पहा",
+    switchAccountBtn: "खाते बदला",
+    changeLocationBtn: "स्थान बदला 📍",
+    logoutBtn: "🚪 लॉग आउट",
     voiceTitle: "तुम्हाला काय त्रास होत आहे?",
     voiceDesc: "माईकवर टॅप करून बोला किंवा खालील समस्या निवडा:",
     micTap: "लक्षणे बोला",
@@ -3035,12 +3651,104 @@ const APP_TRANSLATIONS = {
     cold: "सर्दी आणि घसा खवखवणे",
     acidity: "पोटात गॅस व ॲसिडिटी",
     chestPain: "छातीत तीव्र वेदना (तात्काळ)",
-    authSub: "स्थानिक आरोग्य सेवा आणि फार्मसी नेटवर्क"
+    authSub: "स्थानिक आरोग्य सेवा आणि फार्मसी नेटवर्क",
+    trustedStoresTitle: "🏥 जवळील विश्वासू मेडिकल स्टोअर्स",
+    bestLocalPrices: "सर्वोत्तम स्थानिक दर",
+    stockNear: "उपलब्ध औषधे असलेली दुकाने जवळ",
+    verifiedChemistsTitle: "🏥 पडताळणी केलेली औषध दुकाने",
+    verifiedChemistsSub: "खात्रीशीर औषधे थेट स्थानिक मेडिकल स्टोअरमधून ऑर्डर करा.",
+    searchStorePlaceholder: "औषध शोधा...",
+    searchStoresBtn: "स्टोअर शोधा",
+    ordersTitle: "📦 ऑर्डर्स आणि बुकिंग्ज",
+    ordersSub: "तुमच्या औषध ऑर्डर्सचा मागोवा घ्या.",
+    refreshOrdersBtn: "🔄 यादी रिफ्रेश करा",
+    orderedMedsLabel: "💊 मागवलेली औषधे",
+    bookedApptsLabel: "🏥 बुकिंग्ज",
+    loadingOrders: "ऑर्डर्स लोड होत आहेत...",
+    loadingAppts: "बुकिंग्ज लोड होत आहेत...",
+    noOrders: "कोणतीही ऑर्डर नाही.",
+    noAppts: "कोणतेही बुकिंग नाही.",
+    healthCardTitle: "🛡️ सुरक्षित आरोग्य प्रोफाइल",
+    healthCardSub: "AES-256 एनक्रिप्टेड वैद्यकीय नोंदी आणि मर्यादा.",
+    switchUserBtn: "👤 लॉगिन बदला",
+    patientProfile: "रुग्ण प्रोफाइल",
+    nameLabel: "पूर्ण नाव",
+    phoneLabel: "मोबाइल नंबर",
+    emailLabel: "ईमेल पत्ता",
+    contactLabel: "संपर्क",
+    addressLabel: "डिलिव्हरी पत्ता",
+    coordsLabel: "जीपीएस कोऑर्डिनेट्स",
+    allergiesLabel: "ॲलर्जी",
+    spendingCapLabel: "खर्च मर्यादा",
+    sosContactsLabel: "आपत्कालीन संपर्क",
+    accountCreatedLabel: "खाते तयार झाले",
+    editProfileBtn: "✏️ प्रोफाइल बदला",
+    cancelBtn: "रद्द करा",
+    saveChangesBtn: "✓ बदल जतन करा",
+    allergiesTitle: "माझी औषध ॲलर्जी",
+    allergiesDesc: "या यादीतील औषधे एआय कधीही सुचवणार नाही:",
+    allergyPlaceholder: "ॲलर्जी जोडा...",
+    addAllergyBtn: "+ जोडा",
+    allergicTo: "ॲलर्जी",
+    noAllergies: "कोणतीही ॲलर्जी नोंदवलेली नाही.",
+    activeMedsTitle: "सुरू असलेली औषधे",
+    noActiveMeds: "कोणतीही सुरू औषधे नाहीत.",
+    autoPayTitle: "सुरक्षित पेमेंट मर्यादा",
+    currentCap: "सध्याची मर्यादा",
+    autoPayDesc: "या मर्यादेपेक्षा जास्त ऑर्डरसाठी मंजुरी आवश्यक आहे.",
+    limitPlaceholder: "नवीन मर्यादा ₹ मध्ये",
+    updateLimitBtn: "मर्यादा बदला",
+    emergencyTabTitle: "तात्काळ रुग्णवाहिका SOS (१०८)",
+    emergencyTabSub: "जवळच्या रुग्णालयासाठी लाइव्ह जीपीएस आणि आयसीयू बेड आरक्षण.",
+    dispatchAmbulanceBtn: "🚨 आताच रुग्णवाहिका बोलवा",
+    ambulanceDispatched: "रुग्णवाहिका पाठवली आहे",
+    sosModalTitle: "रुग्णवाहिकेची गरज आहे का?",
+    sosModalSub: "हे त्वरित १०८ आपत्कालीन सेवेला माहिती देईल.",
+    confirmSosBtn: "होय, आताच बोलवा",
+    selectLocationTitle: "स्थान निवडा",
+    selectLocationSub: "औषध डिलिव्हरीसाठी",
+    locTabMap: "🗺️ गुगल मॅप्स",
+    locTabGps: "🛰️ ऑटो जीपीएस",
+    locTabManual: "✏️ मॅन्युअल पत्ता",
+    mapSearchPh: "परिसर शोधा...",
+    findBtn: "शोधा",
+    detectLocationGps: "माझे सध्याचे स्थान शोधा",
+    mapPinHint: "👆 स्थान निश्चित करण्यासाठी पिन हलवा",
+    selectedMapLocation: "📍 निवडलेले स्थान",
+    confirmLocationBtn: "स्थान निश्चित करा",
+    autoDetectTitle: "सध्याचे स्थान शोधा",
+    autoDetectSub: "अचूक स्थानासाठी जीपीएस वापरा",
+    detectLocationGpsBtn: "📍 जीपीएसने स्थान शोधा",
+    deliveryAddressLabel: "डिलिव्हरी पत्ता / गाव",
+    deliveryAddressPh: "उदा. फ्लॅट ३०२, मुख्य रस्ता",
+    cityLabel: "शहर / गाव",
+    pincodeLabel: "पिन कोड",
+    saveLocationBtn: "पत्ता सेव्ह करा",
+    profileTitle: "रुग्ण प्रोफाइल",
+    profileSub: "नोंदवलेले तपशील",
+    inStock: "स्टॉकमध्ये उपलब्ध",
+    orderDelivery: "डिलिव्हरीसाठी ऑर्डर करा",
+    callShop: "📞 दुकानाला कॉल करा",
+    kmAway: "किमी अंतरावर",
+    findingStores: "मेडिकल स्टोअर्स शोधत आहे..."
   },
   gu: {
     name: "Gujarati",
     native: "ગુજરાતી",
     voiceLang: "gu-IN",
+    tabTriage: "તપાસ",
+    tabStores: "દવાની દુકાનો",
+    tabOrders: "ઓર્ડર્સ",
+    tabCard: "હેલ્થ કાર્ડ",
+    tabSos: "ઇમરજન્સી",
+    accountLabel: "ખાતું",
+    signOutBtn: "સાઇન આઉટ",
+    emergencyBtn: "ઇમરજન્સી",
+    outForDelivery: "દવા ડિલિવરી માટે નીકળી ગઈ છે (~૧૫ મિનિટ)",
+    viewProfileBtn: "👤 પ્રોફાઇલ જુઓ",
+    switchAccountBtn: "ખાતું બદલો",
+    changeLocationBtn: "સ્થળ બદલો 📍",
+    logoutBtn: "🚪 સાઇન આઉટ",
     voiceTitle: "તમને ક્યાં દુખાવો થાય છે?",
     voiceDesc: "માઇક દબાવીને બોલો અથવા નીચેથી સમસ્યા પસંદ કરો:",
     micTap: "લક્ષણો બોલો",
@@ -3050,12 +3758,104 @@ const APP_TRANSLATIONS = {
     cold: "શરદી અને ગળામાં દુખાવો",
     acidity: "ગેસ અને એસિડિટી",
     chestPain: "છાતીમાં તીવ્ર દુખાવો (ઇમરજન્સી)",
-    authSub: "સ્થાનિક આરોગ્ય સેવા અને કેમિસ્ટ નેટવર્ક"
+    authSub: "સ્થાનિક આરોગ્ય સેવા અને કેમિસ્ટ નેટવર્ક",
+    trustedStoresTitle: "🏥 નજીકના વિશ્વસનીય મેડિકલ સ્ટોર્સ",
+    bestLocalPrices: "શ્રેષ્ઠ સ્થાનિક ભાવો",
+    stockNear: "ઉપલબ્ધ દવાઓ ધરાવતી દુકાનો નજીકમાં",
+    verifiedChemistsTitle: "🏥 ચકાસાયેલ કેમિસ્ટ્સ",
+    verifiedChemistsSub: "ચકાસાયેલ સ્ટોક સાથે અસલી જેનેરિક દવાઓ ઓર્ડર કરો.",
+    searchStorePlaceholder: "દવા શોધો...",
+    searchStoresBtn: "દુકાનો શોધો",
+    ordersTitle: "📦 ઓર્ડર્સ અને બુકિંગ્સ",
+    ordersSub: "તમારા દવા ઓર્ડર્સ ટ્રેક કરો.",
+    refreshOrdersBtn: "🔄 યાદી રીફ્રેશ કરો",
+    orderedMedsLabel: "💊 મંગાવેલી દવાઓ",
+    bookedApptsLabel: "🏥 બુકિંગ્સ",
+    loadingOrders: "ઓર્ડર્સ લોડ થઈ રહ્યા છે...",
+    loadingAppts: "બુકિંગ્સ લોડ થઈ રહ્યા છે...",
+    noOrders: "કોઈ ઓર્ડર નથી.",
+    noAppts: "કોઈ ઇમરજન્સી બુકિંગ નથી.",
+    healthCardTitle: "🛡️ સુરક્ષિત હેલ્થ પ્રોફાઇલ",
+    healthCardSub: "AES-256 એન્ક્રિપ્ટેડ મેડિકલ રેકોર્ડ્સ.",
+    switchUserBtn: "👤 લોગિન બદલો",
+    patientProfile: "દર્દી પ્રોફાઇલ",
+    nameLabel: "પૂરું નામ",
+    phoneLabel: "મોબાઇલ નંબર",
+    emailLabel: "ઇમેઇલ સરનામું",
+    contactLabel: "સંપર્ક",
+    addressLabel: "ડિલિવરી સરનામું",
+    coordsLabel: "જીપીએસ કોઓર્ડિનેટ્સ",
+    allergiesLabel: "એલર્જી",
+    spendingCapLabel: "ખર્ચ મર્યાદા",
+    sosContactsLabel: "ઇમરજન્સી સંપર્કો",
+    accountCreatedLabel: "ખાતું બન્યું",
+    editProfileBtn: "✏️ પ્રોફાઇલ સંપાદિત કરો",
+    cancelBtn: "રદ કરો",
+    saveChangesBtn: "✓ ફેરફારો સાચવો",
+    allergiesTitle: "મારી દવાઓની એલર્જી",
+    allergiesDesc: "આ દવાઓ AI દ્વારા ક્યારેય સૂચવવામાં આવશે નહીં:",
+    allergyPlaceholder: "એલર્જી ઉમેરો...",
+    addAllergyBtn: "+ ઉમેરો",
+    allergicTo: "એલર્જી",
+    noAllergies: "કોઈ એલર્જી નોંધાયેલ નથી.",
+    activeMedsTitle: "ચાલુ દવાઓનો ઇતિહાસ",
+    noActiveMeds: "કોઈ ચાલુ દવાઓ નથી.",
+    autoPayTitle: "સુરક્ષિત પેમેન્ટ મર્યાદા",
+    currentCap: "હાલની મર્યાદા",
+    autoPayDesc: "આ મર્યાદાથી વધુના ઓર્ડર માટે મંજૂરી જરૂરી છે.",
+    limitPlaceholder: "નવી મર્યાદા ₹ માં",
+    updateLimitBtn: "મર્યાદા અપડેટ કરો",
+    emergencyTabTitle: "ઇમરજન્સી એમ્બ્યુલન્સ SOS (108)",
+    emergencyTabSub: "નજીકની હોસ્પિટલ માટે લાઈવ જીપીએસ અને આઈસીયુ બેડ રિઝર્વેશન.",
+    dispatchAmbulanceBtn: "🚨 હમણાં જ એમ્બ્યુલન્સ બોલાવો",
+    ambulanceDispatched: "એમ્બ્યુલન્સ રવાના થઈ ગઈ છે",
+    sosModalTitle: "એમ્બ્યુલન્સની જરૂર છે?",
+    sosModalSub: "આ તરત જ ૧૦૮ સેવાને જાણ કરશે.",
+    confirmSosBtn: "હા, હમણાં બોલાવો",
+    selectLocationTitle: "સ્થળ પસંદ કરો",
+    selectLocationSub: "દવા ડિલિવરી માટે",
+    locTabMap: "🗺️ ગૂગલ મેપ્સ",
+    locTabGps: "🛰️ ઓટો જીપીએસ",
+    locTabManual: "✏️ સરનામું લખો",
+    mapSearchPh: "વિસ્તાર શોધો...",
+    findBtn: "શોધો",
+    detectLocationGps: "મારું વર્તમાન સ્થળ શોધો",
+    mapPinHint: "👆 ચોક્કસ સ્થાન માટે પિન ખસેડો",
+    selectedMapLocation: "📍 પસંદ કરેલ સ્થળ",
+    confirmLocationBtn: "સ્થળ કન્ફર્મ કરો",
+    autoDetectTitle: "વર્તમાન સ્થળ શોધો",
+    autoDetectSub: "ચોક્કસ સ્થાન માટે જીપીએસ વાપરો",
+    detectLocationGpsBtn: "📍 જીપીએસથી શોધો",
+    deliveryAddressLabel: "ડિલિવરી સરનામું / ગામ",
+    deliveryAddressPh: "દા.ત. ફ્લેટ ૩૦૨, મેઇન રોડ",
+    cityLabel: "શહેર / ગામ",
+    pincodeLabel: "પિન કોડ",
+    saveLocationBtn: "સરનામું સાચવો",
+    profileTitle: "દર્દી પ્રોફાઇલ",
+    profileSub: "નોંધાયેલ વિગતો",
+    inStock: "સ્ટોકમાં ઉપલબ્ધ",
+    orderDelivery: "ડિલિવરી માટે ઓર્ડર કરો",
+    callShop: "📞 દુકાન પર કૉલ કરો",
+    kmAway: "કિમી દૂર",
+    findingStores: "દુકાનો શોધી રહ્યું છે..."
   },
   kn: {
     name: "Kannada",
     native: "ಕನ್ನಡ",
     voiceLang: "kn-IN",
+    tabTriage: "ಪರಿಶೀಲನೆ",
+    tabStores: "ಔಷಧಾಲಯಗಳು",
+    tabOrders: "ಆರ್ಡರ್‌ಗಳು",
+    tabCard: "ಆರೋಗ್ಯ ಕಾರ್ಡ್",
+    tabSos: "ತುರ್ತು",
+    accountLabel: "ಖಾತೆ",
+    signOutBtn: "ಸೈನ್ ಔಟ್",
+    emergencyBtn: "ತುರ್ತು",
+    outForDelivery: "ಔಷಧ ಡೆಲಿವರಿಗೆ ಹೊರಟಿದೆ (~೧೫ ನಿಮಿಷಗಳು)",
+    viewProfileBtn: "👤 ಪ್ರೊಫೈಲ್ ನೋಡಿ",
+    switchAccountBtn: "ಖಾತೆ ಬದಲಿಸಿ",
+    changeLocationBtn: "ಸ್ಥಳ ಬದಲಿಸಿ 📍",
+    logoutBtn: "🚪 ಸೈನ್ ಔಟ್",
     voiceTitle: "ನಿಮಗೆ ಎಲ್ಲಿ ನೋವಾಗುತ್ತಿದೆ?",
     voiceDesc: "ಮೈಕ್ ಒತ್ತಿ ಮಾತನಾಡಿ ಅಥವಾ ಕೆಳಗಿನ ಸಮಸ್ಯೆಯನ್ನು ಆಯ್ಕೆಮಾಡಿ:",
     micTap: "ಮಾತನಾಡಿ",
@@ -3065,12 +3865,104 @@ const APP_TRANSLATIONS = {
     cold: "ಶೀತ ಮತ್ತು ಗಂಟಲು ನೋವು",
     acidity: "ಹೊಟ್ಟೆ ಉರಿ ಮತ್ತು ಗ್ಯಾಸ್",
     chestPain: "ತೀವ್ರ ಎದೆನೋವು (ತುರ್ತು)",
-    authSub: "ಹೈಪರ್‌ಲೋಕಲ್ ಆರೋಗ್ಯ ಸೇವೆ & ಔಷಧಾಲಯ ನೆಟ್‌ವರ್ಕ್"
+    authSub: "ಹೈಪರ್‌ಲೋಕಲ್ ಆರೋಗ್ಯ ಸೇವೆ & ಔಷಧಾಲಯ ನೆಟ್‌ವರ್ಕ್",
+    trustedStoresTitle: "🏥 ಹತ್ತಿರದ ವಿಶ್ವಾಸಾರ್ಹ ಔಷಧಾಲಯಗಳು",
+    bestLocalPrices: "ಉತ್ತಮ ಸ್ಥಳೀಯ ಬೆಲೆಗಳು",
+    stockNear: "ದಾಸ್ತಾನು ಲಭ್ಯವಿರುವ ಔಷಧಾಲಯಗಳು ಹತ್ತಿರದಲ್ಲಿ",
+    verifiedChemistsTitle: "🏥 ಪರಿಶೀಲಿಸಿದ ಔಷಧಾಲಯಗಳು",
+    verifiedChemistsSub: "ಖಾತರಿಯ ದಾಸ್ತಾನಿನೊಂದಿಗೆ ಅಸಲಿ ಔಷಧಿಗಳನ್ನು ಆರ್ಡರ್ ಮಾಡಿ.",
+    searchStorePlaceholder: "ಔಷಧಿ ಹುಡುಕಿ...",
+    searchStoresBtn: "ಅಂಗಡಿಗಳನ್ನು ಹುಡುಕಿ",
+    ordersTitle: "📦 ಆರ್ಡರ್‌ಗಳು & ಬುಕಿಂಗ್‌ಗಳು",
+    ordersSub: "ನಿಮ್ಮ ಹಿಂದಿನ ಔಷಧಿ ಆರ್ಡರ್‌ಗಳನ್ನು ಟ್ರ್ಯಾಕ್ ಮಾಡಿ.",
+    refreshOrdersBtn: "🔄 ಪಟ್ಟಿಯನ್ನು ರಿಫ್ರೆಶ್ ಮಾಡಿ",
+    orderedMedsLabel: "💊 ಆರ್ಡರ್ ಮಾಡಿದ ಔಷಧಿಗಳು",
+    bookedApptsLabel: "🏥 ಬುಕಿಂಗ್‌ಗಳು",
+    loadingOrders: "ಆರ್ಡರ್‌ಗಳು ಲೋಡ್ ಆಗುತ್ತಿವೆ...",
+    loadingAppts: "ಬುಕಿಂಗ್‌ಗಳು ಲೋಡ್ ಆಗುತ್ತಿವೆ...",
+    noOrders: "ಯಾವುದೇ ಆರ್ಡರ್ ಇಲ್ಲ.",
+    noAppts: "ತುರ್ತು ಬುಕಿಂಗ್‌ಗಳು ಇಲ್ಲ.",
+    healthCardTitle: "🛡️ ಸುರಕ್ಷಿತ ಆರೋಗ್ಯ ಪ್ರೊಫೈಲ್",
+    healthCardSub: "AES-256 ಎನ್‌ಕ್ರಿಪ್ಟ್ ಮಾಡಲಾದ ದಾಖಲೆಗಳು.",
+    switchUserBtn: "👤 ಲಾಗಿನ್ ಬದಲಿಸಿ",
+    patientProfile: "ರೋಗಿಯ ಪ್ರೊಫೈಲ್",
+    nameLabel: "ಪೂರ್ಣ ಹೆಸರು",
+    phoneLabel: "ಮೊಬೈಲ್ ಸಂಖ್ಯೆ",
+    emailLabel: "ಇಮೇಲ್ ವಿಳಾಸ",
+    contactLabel: "ಸಂಪರ್ಕ",
+    addressLabel: "ಡೆಲಿವರಿ ವಿಳಾಸ",
+    coordsLabel: "ಜಿಪಿಎಸ್ ನಿರ್ದೇಶಾಂಕಗಳು",
+    allergiesLabel: "ಅಲರ್ಜಿಗಳು",
+    spendingCapLabel: "ಖರ್ಚು ಮಿತಿ",
+    sosContactsLabel: "ತುರ್ತು ಸಂಪರ್ಕಗಳು",
+    accountCreatedLabel: "ಖಾತೆ ರಚಿಸಲಾಗಿದೆ",
+    editProfileBtn: "✏️ ಪ್ರೊಫೈಲ್ ತಿದ್ದಿ",
+    cancelBtn: "ರದ್ದುಮಾಡಿ",
+    saveChangesBtn: "✓ ಬದಲಾವಣೆಗಳನ್ನು ಉಳಿಸಿ",
+    allergiesTitle: "ನನ್ನ ಔಷಧೀಯ ಅಲರ್ಜಿಗಳು",
+    allergiesDesc: "ಈ ಪಟ್ಟಿಯಲ್ಲಿರುವ ಔಷಧಿಗಳನ್ನು AI ಸೂಚಿಸುವುದಿಲ್ಲ:",
+    allergyPlaceholder: "ಅಲರ್ಜಿ ಸೇರಿಸಿ...",
+    addAllergyBtn: "+ ಸೇರಿಸಿ",
+    allergicTo: "ಅಲರ್ಜಿ",
+    noAllergies: "ಯಾವುದೇ ಅಲರ್ಜಿ ದಾಖಲಾಗಿಲ್ಲ.",
+    activeMedsTitle: "ಪ್ರಸ್ತುತ ಔಷಧಿಗಳ ಇತಿಹಾಸ",
+    noActiveMeds: "ಯಾವುದೇ ಔಷಧಿಗಳು ಚಾಲ್ತಿಯಲ್ಲಿಲ್ಲ.",
+    autoPayTitle: "ಸುರಕ್ಷಿತ ಪಾವತಿ ಮಿತಿ",
+    currentCap: "ಪ್ರಸ್ತುತ ಮಿತಿ",
+    autoPayDesc: "ಈ ಮಿತಿಗಿಂತ ಹೆಚ್ಚಿನ ಆರ್ಡರ್‌ಗೆ ಅನುಮೋದನೆ ಅಗತ್ಯವಿದೆ.",
+    limitPlaceholder: "ಹೊಸ ಮಿತಿ ₹ ನಲ್ಲಿ",
+    updateLimitBtn: "ಮಿತಿ ನವೀಕರಿಸಿ",
+    emergencyTabTitle: "ತುರ್ತು ಆಂಬ್ಯುಲೆನ್ಸ್ SOS (108)",
+    emergencyTabSub: "ಹತ್ತಿರದ ಆಸ್ಪತ್ರೆಗೆ ಲೈವ್ ಜಿಪಿಎಸ್ ಮಾಹಿತಿ ಮತ್ತು ಐಸಿಯು ಬೆಡ್ ಮೀಸಲಾತಿ.",
+    dispatchAmbulanceBtn: "🚨 ಈಗಲೇ ಆಂಬ್ಯುಲೆನ್ಸ್ ಕರೆಯಿರಿ",
+    ambulanceDispatched: "ಆಂಬ್ಯುಲೆನ್ಸ್ ರವಾನಿಸಲಾಗಿದೆ",
+    sosModalTitle: "ಆಂಬ್ಯುಲೆನ್ಸ್ ಅಗತ್ಯವಿದೆಯೇ?",
+    sosModalSub: "ಇದು ತಕ್ಷಣವೇ 108 ತುರ್ತು ಸೇವೆಗೆ ಮಾಹಿತಿ ನೀಡುತ್ತದೆ.",
+    confirmSosBtn: "ಹೌದು, ಈಗಲೇ ಕರೆಯಿರಿ",
+    selectLocationTitle: "ಸ್ಥಳವನ್ನು ಆಯ್ಕೆಮಾಡಿ",
+    selectLocationSub: "ಔಷಧಿ ಡೆಲಿವರಿಗಾಗಿ",
+    locTabMap: "🗺️ ಗೂಗಲ್ ಮ್ಯಾಪ್ಸ್",
+    locTabGps: "🛰️ ಆಟೋ ಜಿಪಿಎಸ್",
+    locTabManual: "✏️ ವಿಳಾಸ ನಮೂದಿಸಿ",
+    mapSearchPh: "ಪ್ರದೇಶ ಹುಡುಕಿ...",
+    findBtn: "ಹುಡುಕಿ",
+    detectLocationGps: "ನನ್ನ ಪ್ರಸ್ತುತ ಸ್ಥಳ ಪತ್ತೆಹಚ್ಚಿ",
+    mapPinHint: "👆 ಸ್ಥಳ ಹೊಂದಿಸಲು ಪಿನ್ ಎಳೆಯಿರಿ",
+    selectedMapLocation: "📍 ಆಯ್ಕೆಮಾಡಿದ ಸ್ಥಳ",
+    confirmLocationBtn: "ಸ್ಥಳ ದೃಢೀಕರಿಸಿ",
+    autoDetectTitle: "ಸ್ಥಳವನ್ನು ಸ್ವಯಂ ಪತ್ತೆಹಚ್ಚಿ",
+    autoDetectSub: "ನಿಖರ ಸ್ಥಳಕ್ಕಾಗಿ ಜಿಪಿಎಸ್ ಬಳಸಿ",
+    detectLocationGpsBtn: "📍 ಜಿಪಿಎಸ್ ಮೂಲಕ ಪತ್ತೆಹಚ್ಚಿ",
+    deliveryAddressLabel: "ಡೆಲಿವರಿ ವಿಳಾಸ / ಹಳ್ಳಿ",
+    deliveryAddressPh: "ಉದಾ. ಫ್ಲ್ಯಾಟ್ 302, ಮುಖ್ಯ ರಸ್ತೆ",
+    cityLabel: "ನಗರ / ಹಳ್ಳಿ",
+    pincodeLabel: "ಪಿನ್ ಕೋಡ್",
+    saveLocationBtn: "ವಿಳಾಸ ಉಳಿಸಿ",
+    profileTitle: "ರೋಗಿಯ ಪ್ರೊಫೈಲ್",
+    profileSub: "ದಾಖಲಾದ ವಿವರಗಳು",
+    inStock: "ದಾಸ್ತಾನು ಇದೆ",
+    orderDelivery: "ಡೆಲಿವರಿಗೆ ಆರ್ಡರ್ ಮಾಡಿ",
+    callShop: "📞 ಅಂಗಡಿಗೆ ಕರೆ ಮಾಡಿ",
+    kmAway: "ಕಿ.ಮೀ ದೂರದಲ್ಲಿದೆ",
+    findingStores: "ಅಂಗಡಿಗಳನ್ನು ಹುಡುಕಲಾಗುತ್ತಿದೆ..."
   },
   ml: {
     name: "Malayalam",
     native: "മലയാളം",
     voiceLang: "ml-IN",
+    tabTriage: "ട്രിയാജ്",
+    tabStores: "ഫാർമസികൾ",
+    tabOrders: "ഓർഡറുകൾ",
+    tabCard: "ഹെൽത്ത് കാർഡ്",
+    tabSos: "അടിയന്തരം",
+    accountLabel: "അക്കൗണ്ട്",
+    signOutBtn: "സൈൻ ഔട്ട്",
+    emergencyBtn: "അടിയന്തരം",
+    outForDelivery: "മരുന്ന് ഡെലിവറിക്കായി പുറപ്പെട്ടു (~15 മിനിറ്റ്)",
+    viewProfileBtn: "👤 പ്രൊഫൈൽ കാണുക",
+    switchAccountBtn: "അക്കൗണ്ട് മാറ്റുക",
+    changeLocationBtn: "സ്ഥലം മാറ്റുക 📍",
+    logoutBtn: "🚪 സൈൻ ഔട്ട്",
     voiceTitle: "നിങ്ങൾക്ക് എവിടെയാണ് വേദന?",
     voiceDesc: "മൈക്ക് അമർത്തി സംസാരിക്കുക അല്ലെങ്കിൽ പ്രശ്നം തിരഞ്ഞെടുക്കുക:",
     micTap: "സംസാരിക്കുക",
@@ -3080,12 +3972,104 @@ const APP_TRANSLATIONS = {
     cold: "ജലദോഷം & തൊണ്ടവേദന",
     acidity: "ഗ്യാസ് & അസിഡിറ്റി",
     chestPain: "നെഞ്ചുവേദന (അടിയന്തരം)",
-    authSub: "പ്രാദേശിക ആരോഗ്യ സേവന ശൃംഖല"
+    authSub: "പ്രാദേശിക ആരോഗ്യ സേവന ശൃംഖല",
+    trustedStoresTitle: "🏥 അടുത്തുള്ള മെഡിക്കൽ സ്റ്റോറുകൾ",
+    bestLocalPrices: "മികച്ച പ്രാദേശിക വിലകൾ",
+    stockNear: "മരുന്ന് സ്റ്റോക്കുള്ള കടകൾ അടുത്ത്",
+    verifiedChemistsTitle: "🏥 അംഗീകൃത ഫാർമസികൾ",
+    verifiedChemistsSub: "യഥാർത്ഥ ജനറിക് മരുന്നുകൾ ഓൺലൈനായി ഓർഡർ ചെയ്യുക.",
+    searchStorePlaceholder: "മരുന്ന് തിരയുക...",
+    searchStoresBtn: "കടകൾ തിരയുക",
+    ordersTitle: "📦 ഓർഡറുകൾ & ബുക്കിംഗുകൾ",
+    ordersSub: "മുൻകാല മരുന്ന് ഓർഡറുകൾ ട്രാക്ക് ചെയ്യുക.",
+    refreshOrdersBtn: "🔄 പുതുക്കുക",
+    orderedMedsLabel: "💊 ഓർഡർ ചെയ്ത മരുന്നുകൾ",
+    bookedApptsLabel: "🏥 ബുക്കിംഗുകൾ",
+    loadingOrders: "ഓർഡറുകൾ ലോഡുചെയ്യുന്നു...",
+    loadingAppts: "ബുക്കിംഗുകൾ ലോഡുചെയ്യുന്നു...",
+    noOrders: "ഓർഡറുകളൊന്നുമില്ല.",
+    noAppts: "അടിയന്തര ബുക്കിംഗുകളൊന്നുമില്ല.",
+    healthCardTitle: "🛡️ ആരോഗ്യ കാർഡ്",
+    healthCardSub: "AES-256 സുരക്ഷിത ആരോഗ്യ വിവരങ്ങൾ.",
+    switchUserBtn: "👤 ലോഗിൻ മാറ്റുക",
+    patientProfile: "രോഗിയുടെ പ്രൊഫൈൽ",
+    nameLabel: "പൂർണ്ണമായ പേര്",
+    phoneLabel: "മൊബൈൽ നമ്പർ",
+    emailLabel: "ഇമെയിൽ വിലാസം",
+    contactLabel: "ബന്ധപ്പെടുക",
+    addressLabel: "ഡെലിവറി വിലാസം",
+    coordsLabel: "ജിപിഎസ് കോർഡിനേറ്റുകൾ",
+    allergiesLabel: "അലർജികൾ",
+    spendingCapLabel: "പേയ്‌മെന്റ് പരിധി",
+    sosContactsLabel: "അടിയന്തര നമ്പറുകൾ",
+    accountCreatedLabel: "അക്കൗണ്ട് നിർമ്മിച്ചത്",
+    editProfileBtn: "✏️ പ്രൊഫൈൽ മാറ്റുക",
+    cancelBtn: "റദ്ദാക്കുക",
+    saveChangesBtn: "✓ മാറ്റങ്ങൾ സംരക്ഷിക്കുക",
+    allergiesTitle: "മരുന്ന് അലർജികൾ",
+    allergiesDesc: "ഈ പട്ടികയിലെ മരുന്നുകൾ നിർദ്ദേശിക്കപ്പെടില്ല:",
+    allergyPlaceholder: "അലർജി ചേർക്കുക...",
+    addAllergyBtn: "+ ചേർക്കുക",
+    allergicTo: "അലർജി",
+    noAllergies: "അലർജികളൊന്നും രേഖപ്പെടുത്തിയിട്ടില്ല.",
+    activeMedsTitle: "നിലവിലെ മരുന്നുകൾ",
+    noActiveMeds: "നിലവിൽ മരുന്നുകളൊന്നുമില്ല.",
+    autoPayTitle: "സുരക്ഷിത പേയ്‌മെന്റ് പരിധി",
+    currentCap: "നിലവിലെ പരിധി",
+    autoPayDesc: "ഈ പരിധിക്ക് മുകളിലുള്ള ഓർഡറുകൾക്ക് പ്രത്യേക അനുമതി ആവശ്യമാണ്.",
+    limitPlaceholder: "പുതിയ പരിധി ₹",
+    updateLimitBtn: "പരിധി മാറ്റുക",
+    emergencyTabTitle: "അടിയന്തര ആംബുലൻസ് SOS (108)",
+    emergencyTabSub: "അടുത്തുള്ള ആശുപത്രിയിലേക്ക് ലൈവ് ജിപിഎസ് & ഐസിയു ബെഡ് റിസർവേഷൻ.",
+    dispatchAmbulanceBtn: "🚨 ആംബുലൻസ് വിളിക്കുക",
+    ambulanceDispatched: "ആംബുലൻസ് പുറപ്പെട്ടു",
+    sosModalTitle: "ആംബുലൻസ് ആവശ്യമുണ്ടോ?",
+    sosModalSub: "ഇത് ഉടനടി 108 സർവീസിനെ അറിയിക്കും.",
+    confirmSosBtn: "അതെ, ഇപ്പോൾ വിളിക്കുക",
+    selectLocationTitle: "സ്ഥലം തിരഞ്ഞെടുക്കുക",
+    selectLocationSub: "മരുന്ന് ഡെലിവറിക്കായി",
+    locTabMap: "🗺️ ഗൂഗിൾ മാപ്പ്",
+    locTabGps: "🛰️ ഓട്ടോ ജിപിഎസ്",
+    locTabManual: "✏️ വിലാസം നൽകുക",
+    mapSearchPh: "സ്ഥലം തിരയുക...",
+    findBtn: "കണ്ടെത്തുക",
+    detectLocationGps: "എന്റെ സ്ഥലം കണ്ടെത്തുക",
+    mapPinHint: "👆 സ്ഥലം ഉറപ്പിക്കാൻ പിൻ നീക്കുക",
+    selectedMapLocation: "📍 തിരഞ്ഞെടുത്ത സ്ഥലം",
+    confirmLocationBtn: "സ്ഥലം ഉറപ്പിക്കുക",
+    autoDetectTitle: "സ്ഥലം കണ്ടെത്തുക",
+    autoDetectSub: "കൃത്യമായ സ്ഥാനത്തിന് ജിപിഎസ് ഉപയോഗിക്കുക",
+    detectLocationGpsBtn: "📍 ജിപിഎസ് വഴി കണ്ടെത്തുക",
+    deliveryAddressLabel: "ഡെലിവറി വിലാസം / ഗ്രാമം",
+    deliveryAddressPh: "ഉദാ. ഫ്ലാറ്റ് 302, മെയിൻ റോഡ്",
+    cityLabel: "നഗരം / ഗ്രാമം",
+    pincodeLabel: "പിൻ കോഡ്",
+    saveLocationBtn: "വിലാസം സംരക്ഷിക്കുക",
+    profileTitle: "രോഗിയുടെ വിവരങ്ങൾ",
+    profileSub: "രേഖപ്പെടുത്തിയ വിവരങ്ങൾ",
+    inStock: "സ്റ്റോക്കുണ്ട്",
+    orderDelivery: "ഡെലിവറിക്കായി ഓർഡർ ചെയ്യുക",
+    callShop: "📞 വിളിക്കുക",
+    kmAway: "കി.മീ ദൂരെ",
+    findingStores: "കടകൾ തിരയുന്നു..."
   },
   pa: {
     name: "Punjabi",
     native: "ਪੰਜਾਬੀ",
     voiceLang: "pa-IN",
+    tabTriage: "ਜਾਂਚ",
+    tabStores: "ਦਵਾਈਆਂ ਦੀਆਂ ਦੁਕਾਨਾਂ",
+    tabOrders: "ਆਰਡਰ",
+    tabCard: "ਸਿਹਤ ਕਾਰਡ",
+    tabSos: "ਐਮਰਜੈਂਸੀ",
+    accountLabel: "ਖਾਤਾ",
+    signOutBtn: "ਸਾਈਨ ਆਊਟ",
+    emergencyBtn: "ਐਮਰਜੈਂਸੀ",
+    outForDelivery: "ਦਵਾਈ ਡਿਲੀਵਰੀ ਲਈ ਰਵਾਨਾ ਹੋ ਚੁੱਕੀ ਹੈ (~15 ਮਿੰਟ)",
+    viewProfileBtn: "👤 ਪ੍ਰੋਫਾਈਲ ਵੇਖੋ",
+    switchAccountBtn: "ਖਾਤਾ ਬਦਲੋ",
+    changeLocationBtn: "ਟਿਕਾਣਾ ਬਦਲੋ 📍",
+    logoutBtn: "🚪 ਲੌਗ ਆਉਟ",
     voiceTitle: "ਤੁਹਾਨੂੰ ਕੀ ਤਕਲੀਫ਼ ਹੈ?",
     voiceDesc: "ਮਾਈਕ ਦਬਾ ਕੇ ਬੋਲੋ ਜਾਂ ਹੇਠਾਂ ਦਿੱਤੀ ਸਮੱਸਿਆ ਚੁਣੋ:",
     micTap: "ਲੱਛਣ ਬੋਲੋ",
@@ -3095,7 +4079,86 @@ const APP_TRANSLATIONS = {
     cold: "ਜ਼ੁਕਾਮ ਅਤੇ ਗਲੇ ਵਿੱਚ ਦਰਦ",
     acidity: "ਗੈਸ ਅਤੇ ਐਸਿਡਿਟੀ",
     chestPain: "ਛਾਤੀ ਵਿੱਚ ਤੇਜ਼ ਦਰਦ (ਐਮਰਜੈਂਸੀ)",
-    authSub: "ਸਥਾਨਕ ਸਿਹਤ ਸੇਵਾ ਅਤੇ ਮੈਡੀਕਲ ਨੈੱਟਵਰਕ"
+    authSub: "ਸਥਾਨਕ ਸਿਹਤ ਸੇਵਾ ਅਤੇ ਮੈਡੀਕਲ ਨੈੱਟਵਰਕ",
+    trustedStoresTitle: "🏥 ਨੇੜਲੀਆਂ ਭਰੋਸੇਮੰਦ ਮੈਡੀਕਲ ਦੁਕਾਨਾਂ",
+    bestLocalPrices: "ਵਧੀਆ ਸਥਾਨਕ ਕੀਮਤਾਂ",
+    stockNear: "ਦਵਾਈਆਂ ਦੇ ਸਟਾਕ ਵਾਲੀਆਂ ਦੁਕਾਨਾਂ ਨੇੜੇ",
+    verifiedChemistsTitle: "🏥 ਪ੍ਰਮਾਣਿਤ ਕੈਮਿਸਟ",
+    verifiedChemistsSub: "ਅਸਲੀ ਦਵਾਈਆਂ ਸਿੱਧੀਆਂ ਨੇੜਲੀਆਂ ਦੁਕਾਨਾਂ ਤੋਂ ਮੰਗਵਾਓ।",
+    searchStorePlaceholder: "ਦਵਾਈ ਲੱਭੋ...",
+    searchStoresBtn: "ਦੁਕਾਨਾਂ ਲੱਭੋ",
+    ordersTitle: "📦 ਆਰਡਰ ਅਤੇ ਬੁਕਿੰਗ",
+    ordersSub: "ਆਪਣੇ ਪਿਛਲੇ ਦਵਾਈਆਂ ਦੇ ਆਰਡਰ ਟ੍ਰੈਕ ਕਰੋ।",
+    refreshOrdersBtn: "🔄 ਸੂਚੀ ਤਾਜ਼ਾ ਕਰੋ",
+    orderedMedsLabel: "💊 ਮੰਗਵਾਈਆਂ ਦਵਾਈਆਂ",
+    bookedApptsLabel: "🏥 ਬੁਕਿੰਗ",
+    loadingOrders: "ਆਰਡਰ ਲੋਡ ਹੋ ਰਹੇ ਹਨ...",
+    loadingAppts: "ਬੁਕਿੰਗ ਲੋਡ ਹੋ ਰਹੀ ਹੈ...",
+    noOrders: "ਕੋਈ ਆਰਡਰ ਨਹੀਂ ਹੈ।",
+    noAppts: "ਕੋਈ ਐਮਰਜੈਂਸੀ ਬੁਕਿੰਗ ਨਹੀਂ ਹੈ।",
+    healthCardTitle: "🛡️ ਸੁਰੱਖਿਅਤ ਸਿਹਤ ਪ੍ਰੋਫਾਈਲ",
+    healthCardSub: "AES-256 ਸੁਰੱਖਿਅਤ ਰਿਕਾਰਡ।",
+    switchUserBtn: "👤 ਲੌਗਇਨ ਬਦਲੋ",
+    patientProfile: "ਮਰੀਜ਼ ਦਾ ਪ੍ਰੋਫਾਈਲ",
+    nameLabel: "ਪੂਰਾ ਨਾਮ",
+    phoneLabel: "ਮੋਬਾਈਲ ਨੰਬਰ",
+    emailLabel: "ਈਮੇਲ ਪਤਾ",
+    contactLabel: "ਸੰਪਰਕ",
+    addressLabel: "ਡਿਲੀਵਰੀ ਦਾ ਪਤਾ",
+    coordsLabel: "ਜੀਪੀਐਸ ਨਿਰਦੇਸ਼ਾਂਕ",
+    allergiesLabel: "ਐਲਰਜੀ",
+    spendingCapLabel: "ਖਰਚ ਸੀਮਾ",
+    sosContactsLabel: "ਐਮਰਜੈਂਸੀ ਸੰਪਰਕ",
+    accountCreatedLabel: "ਖਾਤਾ ਬਣਾਇਆ ਗਿਆ",
+    editProfileBtn: "✏️ ਪ੍ਰੋਫਾਈਲ ਬਦਲੋ",
+    cancelBtn: "ਰੱਦ ਕਰੋ",
+    saveChangesBtn: "✓ ਬਦਲਾਅ ਸੰਭਾਲੋ",
+    allergiesTitle: "ਮੇਰੀ ਦਵਾਈਆਂ ਦੀ ਐਲਰਜੀ",
+    allergiesDesc: "ਇਸ ਸੂਚੀ ਦੀਆਂ ਦਵਾਈਆਂ ਕਦੇ ਵੀ ਨਹੀਂ ਸੁਝਾਈਆਂ ਜਾਣਗੀਆਂ:",
+    allergyPlaceholder: "ਐਲਰਜੀ ਜੋੜੋ...",
+    addAllergyBtn: "+ ਜੋੜੋ",
+    allergicTo: "ਐਲਰਜੀ",
+    noAllergies: "ਕੋਈ ਐਲਰਜੀ ਦਰਜ ਨਹੀਂ ਹੈ।",
+    activeMedsTitle: "ਚੱਲ ਰਹੀਆਂ ਦਵਾਈਆਂ ਦਾ ਇਤਿਹਾਸ",
+    noActiveMeds: "ਕੋਈ ਦਵਾਈ ਨਹੀਂ ਚੱਲ ਰਹੀ।",
+    autoPayTitle: "ਸੁਰੱਖਿਅਤ ਭੁਗਤਾਨ ਸੀਮਾ",
+    currentCap: "ਮੌਜੂਦਾ ਸੀਮਾ",
+    autoPayDesc: "ਇਸ ਸੀਮਾ ਤੋਂ ਵੱਧ ਦੇ ਆਰਡਰ ਲਈ ਮਨਜ਼ੂਰੀ ਦੀ ਲੋੜ ਹੈ।",
+    limitPlaceholder: "ਨਵੀਂ ਸੀਮਾ ₹ ਵਿੱਚ",
+    updateLimitBtn: "ਸੀਮਾ ਬਦਲੋ",
+    emergencyTabTitle: "ਐਮਰਜੈਂਸੀ ਐਂਬੂਲੈਂਸ SOS (108)",
+    emergencyTabSub: "ਨੇੜਲੇ ਹਸਪਤਾਲ ਲਈ ਲਾਈਵ ਜੀਪੀਐਸ ਅਤੇ ਆਈਸੀਯੂ ਬੈੱਡ ਰਿਜ਼ਰਵੇਸ਼ਨ।",
+    dispatchAmbulanceBtn: "🚨 ਹੁਣੇ ਐਂਬੂਲੈਂਸ ਮੰਗਵਾਓ",
+    ambulanceDispatched: "ਐਂਬੂਲੈਂਸ ਰਵਾਨਾ ਹੋ ਗਈ ਹੈ",
+    sosModalTitle: "ਕੀ ਐਂਬੂਲੈਂਸ ਦੀ ਲੋੜ ਹੈ?",
+    sosModalSub: "ਇਹ ਤੁਰੰਤ 108 ਐਮਰਜੈਂਸੀ ਸੇਵਾ ਨੂੰ ਸੂਚਿਤ ਕਰੇਗਾ।",
+    confirmSosBtn: "ਹਾਂ, ਹੁਣੇ ਮੰਗਵਾਓ",
+    selectLocationTitle: "ਟਿਕਾਣਾ ਚੁਣੋ",
+    selectLocationSub: "ਦਵਾਈ ਡਿਲੀਵਰੀ ਲਈ",
+    locTabMap: "🗺️ ਗੂਗਲ ਮੈਪਸ",
+    locTabGps: "🛰️ ਆਟੋ ਜੀਪੀਐਸ",
+    locTabManual: "✏️ ਪਤਾ ਲਿਖੋ",
+    mapSearchPh: "ਇਲਾਕਾ ਲੱਭੋ...",
+    findBtn: "ਲੱਭੋ",
+    detectLocationGps: "ਮੇਰਾ ਮੌਜੂਦਾ ਟਿਕਾਣਾ ਲੱਭੋ",
+    mapPinHint: "👆 ਟਿਕਾਣਾ ਸੈੱਟ ਕਰਨ ਲਈ ਪਿੰਨ ਹਿਲਾਓ",
+    selectedMapLocation: "📍 ਚੁਣਿਆ ਹੋਇਆ ਟਿਕਾਣਾ",
+    confirmLocationBtn: "ਟਿਕਾਣਾ ਪੱਕਾ ਕਰੋ",
+    autoDetectTitle: "ਟਿਕਾਣਾ ਆਪਣੇ ਆਪ ਲੱਭੋ",
+    autoDetectSub: "ਸਹੀ ਟਿਕਾਣੇ ਲਈ ਜੀਪੀਐਸ ਵਰਤੋ",
+    detectLocationGpsBtn: "📍 ਜੀਪੀਐਸ ਨਾਲ ਲੱਭੋ",
+    deliveryAddressLabel: "ਡਿਲੀਵਰੀ ਦਾ ਪਤਾ / ਪਿੰਡ",
+    deliveryAddressPh: "ਜਿਵੇਂ ਫਲੈਟ 302, ਮੁੱਖ ਸੜਕ",
+    cityLabel: "ਸ਼ਹਿਰ / ਪਿੰਡ",
+    pincodeLabel: "ਪਿੰਨ ਕੋਡ",
+    saveLocationBtn: "ਪਤਾ ਸੰਭਾਲੋ",
+    profileTitle: "ਮਰੀਜ਼ ਦਾ ਪ੍ਰੋਫਾਈਲ",
+    profileSub: "ਦਰਜ ਕੀਤੇ ਵੇਰਵੇ",
+    inStock: "ਸਟਾਕ ਉਪਲਬਧ ਹੈ",
+    orderDelivery: "ਡਿਲੀਵਰੀ ਲਈ ਆਰਡਰ ਕਰੋ",
+    callShop: "📞 ਦੁਕਾਨ 'ਤੇ ਕਾਲ ਕਰੋ",
+    kmAway: "ਕਿ.ਮੀ. ਦੂਰ",
+    findingStores: "ਦੁਕਾਨਾਂ ਲੱਭੀਆਂ ਜਾ ਰਹੀਆਂ ਹਨ..."
   }
 };
 
@@ -3123,9 +4186,26 @@ window.selectAppLanguage = function(langCode) {
 };
 
 function applyAppLanguage(langCode) {
+  currentAppLang = langCode;
   const tr = APP_TRANSLATIONS[langCode] || APP_TRANSLATIONS.en;
 
-  // Update language badges in login modal and top header
+  // 1. Batch-translate all elements with data-i18n attribute
+  document.querySelectorAll("[data-i18n]").forEach(el => {
+    const key = el.getAttribute("data-i18n");
+    if (tr[key]) {
+      el.textContent = tr[key];
+    }
+  });
+
+  // 2. Batch-translate all inputs with data-i18n-placeholder attribute
+  document.querySelectorAll("[data-i18n-placeholder]").forEach(el => {
+    const key = el.getAttribute("data-i18n-placeholder");
+    if (tr[key]) {
+      el.placeholder = tr[key];
+    }
+  });
+
+  // 3. Update language buttons in login modal and top header
   const loginLangText = document.getElementById("loginLangBtnText");
   if (loginLangText) loginLangText.textContent = tr.native;
 
@@ -3133,46 +4213,52 @@ function applyAppLanguage(langCode) {
     el.textContent = tr.native;
   });
 
-  // Sync Voice Language selector
+  // 4. Sync Voice Language selector
   const voiceSelect = document.getElementById("voiceLangSelect");
   if (voiceSelect && tr.voiceLang) {
     voiceSelect.value = tr.voiceLang;
   }
 
-  // Translate Voice & Symptom input fields
+  // 5. Translate Voice & Symptom input fields
   const vTitle = document.querySelector(".voice-title");
-  if (vTitle) vTitle.textContent = tr.voiceTitle;
+  if (vTitle && tr.voiceTitle) vTitle.textContent = tr.voiceTitle;
 
   const vDesc = document.querySelector(".voice-desc");
-  if (vDesc) vDesc.textContent = tr.voiceDesc;
+  if (vDesc && tr.voiceDesc) vDesc.textContent = tr.voiceDesc;
 
   const micStatus = document.getElementById("micStatusText");
-  if (micStatus && !isRecording) micStatus.textContent = tr.micTap;
+  if (micStatus && !isRecording && tr.micTap) micStatus.textContent = tr.micTap;
 
-  if (symptomInput) symptomInput.placeholder = tr.symptomPlaceholder;
+  if (symptomInput && tr.symptomPlaceholder) symptomInput.placeholder = tr.symptomPlaceholder;
 
   const sendBtnSpan = document.querySelector("#sendBtn span:first-child");
-  if (sendBtnSpan) sendBtnSpan.textContent = tr.consultBtn;
+  if (sendBtnSpan && tr.consultBtn) sendBtnSpan.textContent = tr.consultBtn;
 
-  // Translate Presets
+  // 6. Translate Presets
   const pAllergy = document.querySelector("#presetAllergy .prob-text strong");
-  if (pAllergy) pAllergy.textContent = tr.headache;
+  if (pAllergy && tr.headache) pAllergy.textContent = tr.headache;
 
   const pCold = document.querySelector("#presetCold .prob-text strong");
-  if (pCold) pCold.textContent = tr.cold;
+  if (pCold && tr.cold) pCold.textContent = tr.cold;
 
   const pAcidity = document.querySelector("#presetAcidity .prob-text strong");
-  if (pAcidity) pAcidity.textContent = tr.acidity;
+  if (pAcidity && tr.acidity) pAcidity.textContent = tr.acidity;
 
   const pEmergency = document.querySelector("#presetEmergency .prob-text strong");
-  if (pEmergency) pEmergency.textContent = tr.chestPain;
+  if (pEmergency && tr.chestPain) pEmergency.textContent = tr.chestPain;
 
   const authSub = document.getElementById("authModalSubTitle");
-  if (authSub) authSub.textContent = tr.authSub;
+  if (authSub && tr.authSub) authSub.textContent = tr.authSub;
+
+  // 7. Refresh dynamic components with updated localized strings
+  if (healthCardDetails) {
+    loadHealthCard();
+  }
+  loadNearbyChemists();
+  loadFullChemistList();
 }
 
 // Initialize language on startup
-applyAppLanguage(currentAppLang);
 
 /* ==========================================================
    PATIENT PROFILE MODAL LOGIC
