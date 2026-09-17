@@ -115,31 +115,32 @@ from backend.security.auth import hash_password
 def init_db_and_seed():
     Base.metadata.create_all(bind=engine)
     
-    # Auto-migrate SQLite schema
-    try:
-        with engine.connect() as conn:
-            user_cols = [row[1] for row in conn.exec_driver_sql("PRAGMA table_info(users)").fetchall()]
-            if "email" not in user_cols:
-                conn.exec_driver_sql("ALTER TABLE users ADD COLUMN email VARCHAR(120)")
-            if "password_hash" not in user_cols:
-                conn.exec_driver_sql("ALTER TABLE users ADD COLUMN password_hash VARCHAR(255)")
-            if "role" not in user_cols:
-                conn.exec_driver_sql("ALTER TABLE users ADD COLUMN role VARCHAR(30) DEFAULT 'customer'")
-            if "store_id" not in user_cols:
-                conn.exec_driver_sql("ALTER TABLE users ADD COLUMN store_id VARCHAR(36)")
+    # Auto-migrate SQLite schema only if dialect is sqlite
+    if engine.dialect.name == "sqlite":
+        try:
+            with engine.connect() as conn:
+                user_cols = [row[1] for row in conn.exec_driver_sql("PRAGMA table_info(users)").fetchall()]
+                if "email" not in user_cols:
+                    conn.exec_driver_sql("ALTER TABLE users ADD COLUMN email VARCHAR(120)")
+                if "password_hash" not in user_cols:
+                    conn.exec_driver_sql("ALTER TABLE users ADD COLUMN password_hash VARCHAR(255)")
+                if "role" not in user_cols:
+                    conn.exec_driver_sql("ALTER TABLE users ADD COLUMN role VARCHAR(30) DEFAULT 'customer'")
+                if "store_id" not in user_cols:
+                    conn.exec_driver_sql("ALTER TABLE users ADD COLUMN store_id VARCHAR(36)")
 
-            pharm_cols = [row[1] for row in conn.exec_driver_sql("PRAGMA table_info(pharmacies)").fetchall()]
-            if "owner_user_id" not in pharm_cols:
-                conn.exec_driver_sql("ALTER TABLE pharmacies ADD COLUMN owner_user_id VARCHAR(36)")
+                pharm_cols = [row[1] for row in conn.exec_driver_sql("PRAGMA table_info(pharmacies)").fetchall()]
+                if "owner_user_id" not in pharm_cols:
+                    conn.exec_driver_sql("ALTER TABLE pharmacies ADD COLUMN owner_user_id VARCHAR(36)")
 
-            em_cols = [row[1] for row in conn.exec_driver_sql("PRAGMA table_info(emergency_events)").fetchall()]
-            if "token_id" not in em_cols:
-                conn.exec_driver_sql("ALTER TABLE emergency_events ADD COLUMN token_id VARCHAR(50)")
-            if "appointment_type" not in em_cols:
-                conn.exec_driver_sql("ALTER TABLE emergency_events ADD COLUMN appointment_type VARCHAR(60)")
-            conn.commit()
-    except Exception:
-        pass
+                em_cols = [row[1] for row in conn.exec_driver_sql("PRAGMA table_info(emergency_events)").fetchall()]
+                if "token_id" not in em_cols:
+                    conn.exec_driver_sql("ALTER TABLE emergency_events ADD COLUMN token_id VARCHAR(50)")
+                if "appointment_type" not in em_cols:
+                    conn.exec_driver_sql("ALTER TABLE emergency_events ADD COLUMN appointment_type VARCHAR(60)")
+                conn.commit()
+        except Exception:
+            pass
 
     db = SessionLocal()
     try:
@@ -171,6 +172,7 @@ def init_db_and_seed():
                     payment_limit=1500.0
                 )
                 db.add(user)
+                db.commit()
                 
                 # Sample medical record with Aspirin/NSAID allergy
                 med_rec = MedicalRecord(
@@ -194,6 +196,7 @@ def init_db_and_seed():
                     active=True
                 )
                 db.add(med_hist)
+                db.commit()
 
         # Seed Pharmacy Owner Demo User
         owner_user = db.query(User).filter(User.id == "usr-owner-001").first()
@@ -248,103 +251,103 @@ def init_db_and_seed():
             {
                 "id": "pharm-002",
                 "name": "Gupta Medical & Day-Night Health Store",
-                "latitude": 28.4690,
-                "longitude": 77.0440,
-                "address": "Booth 12, Main Commercial Complex, Sector 15, Gurgaon",
+                "latitude": 28.4695,
+                "longitude": 77.0450,
+                "address": "Booth #12, Huda Commercial Complex, Sector 15 Part 2, Gurgaon",
                 "phone": "+91 98102 34567",
                 "owner_user_id": None,
                 "response_time_avg": 12,
                 "rating": 4.7,
-                "inv": create_store_inventory(1.0, 0.9)
+                "inv": create_store_inventory(1.0, 1.0)
             },
             {
                 "id": "pharm-003",
-                "name": "Jan Aushadhi Generic Kendra #108",
-                "latitude": 28.4710,
-                "longitude": 77.0450,
-                "address": "Plot 5, Community Centre, Sector 14, Gurgaon",
+                "name": "Apollo Pharmacy 24x7 Sector 14",
+                "latitude": 28.4735,
+                "longitude": 77.0390,
+                "address": "SCO #45, Ground Floor, Sector 14 Main Market, Gurgaon",
                 "phone": "+91 98103 45678",
                 "owner_user_id": None,
-                "response_time_avg": 16,
+                "response_time_avg": 15,
                 "rating": 4.8,
-                "inv": create_store_inventory(0.90, 1.5)
+                "inv": create_store_inventory(1.05, 1.5)
             },
-
-            # Cluster 2: DLF Phase 2 / Cyber Hub / Cyber City
             {
                 "id": "pharm-004",
-                "name": "CyberMed Express & Wellness",
-                "latitude": 28.4952,
-                "longitude": 77.0895,
-                "address": "Ground Floor, Building 10, DLF Cyber Hub, DLF Phase 2, Gurgaon",
+                "name": "MedPlus Chemist & Wellness Store",
+                "latitude": 28.4610,
+                "longitude": 77.0480,
+                "address": "SCF #22, Old Judicial Complex, Civil Lines, Gurgaon",
                 "phone": "+91 98104 56789",
+                "owner_user_id": None,
+                "response_time_avg": 11,
+                "rating": 4.6,
+                "inv": create_store_inventory(0.92, 0.9)
+            },
+
+            # Cluster 2: DLF Phase 1 / Golf Course Road
+            {
+                "id": "pharm-005",
+                "name": "DLF City Medicos & Diagnostics",
+                "latitude": 28.4795,
+                "longitude": 77.0980,
+                "address": "Qutab Plaza, DLF Phase 1, Gurgaon",
+                "phone": "+91 98105 67890",
                 "owner_user_id": None,
                 "response_time_avg": 10,
                 "rating": 4.9,
-                "inv": create_store_inventory(0.98, 1.3)
-            },
-            {
-                "id": "pharm-005",
-                "name": "Guardian Pharmacy Cyber City",
-                "latitude": 28.4940,
-                "longitude": 77.0880,
-                "address": "Shop 22, Central Arcade, DLF Phase 2, Gurgaon",
-                "phone": "+91 98105 67890",
-                "owner_user_id": None,
-                "response_time_avg": 14,
-                "rating": 4.8,
-                "inv": create_store_inventory(1.02, 1.1)
+                "inv": create_store_inventory(1.02, 1.3)
             },
             {
                 "id": "pharm-006",
-                "name": "Fortis Health Shoppe DLF",
-                "latitude": 28.4965,
-                "longitude": 77.0910,
-                "address": "DLF Gateway Tower, Sector 24/25, Gurgaon",
+                "name": "Fortis Express Pharmacy Galleria",
+                "latitude": 28.4685,
+                "longitude": 77.0860,
+                "address": "Galleria Market, DLF Phase 4, Gurgaon",
                 "phone": "+91 98106 78901",
                 "owner_user_id": None,
-                "response_time_avg": 15,
-                "rating": 4.7,
-                "inv": create_store_inventory(1.05, 1.0)
+                "response_time_avg": 7,
+                "rating": 4.9,
+                "inv": create_store_inventory(1.08, 2.0)
             },
 
-            # Cluster 3: Sector 29 Leisure Valley
+            # Cluster 3: Sector 29 / South City 1
             {
                 "id": "pharm-007",
-                "name": "Sector 29 Wellness Chemist",
-                "latitude": 28.4675,
-                "longitude": 77.0655,
-                "address": "SCO 31, Sector 29 Commercial Market, Gurgaon",
+                "name": "Max Wellness & Local Chemist",
+                "latitude": 28.4670,
+                "longitude": 77.0650,
+                "address": "HUDA City Centre Metro Station Complex, Gurgaon",
                 "phone": "+91 98107 89012",
                 "owner_user_id": None,
-                "response_time_avg": 10,
-                "rating": 4.9,
-                "inv": create_store_inventory(0.96, 1.0)
+                "response_time_avg": 6,
+                "rating": 4.8,
+                "inv": create_store_inventory(1.0, 1.1)
             },
             {
                 "id": "pharm-008",
-                "name": "Leisure Valley QuickMeds",
-                "latitude": 28.4680,
-                "longitude": 77.0640,
-                "address": "Near IFFCO Chowk Metro, Sector 29, Gurgaon",
+                "name": "South City Day-Night Medicos",
+                "latitude": 28.4550,
+                "longitude": 77.0610,
+                "address": "Arcadia Market, South City 2, Gurgaon",
                 "phone": "+91 98108 90123",
                 "owner_user_id": None,
-                "response_time_avg": 12,
-                "rating": 4.8,
-                "inv": create_store_inventory(0.98, 1.2)
+                "response_time_avg": 13,
+                "rating": 4.6,
+                "inv": create_store_inventory(0.94, 0.8)
             },
 
-            # Cluster 4: Golf Course Road / Sector 54
+            # Cluster 4: Sector 56 / Golf Course Ext
             {
                 "id": "pharm-009",
-                "name": "Golf Course MedZone Chemist",
-                "latitude": 28.4415,
-                "longitude": 77.1085,
-                "address": "Plaza 54, Golf Course Road, Sector 54, Gurgaon",
+                "name": "Sector 56 Community Pharmacy",
+                "latitude": 28.4310,
+                "longitude": 77.1020,
+                "address": "Huda Market, Sector 56, Gurgaon",
                 "phone": "+91 98109 01234",
                 "owner_user_id": None,
-                "response_time_avg": 11,
-                "rating": 4.9,
+                "response_time_avg": 9,
+                "rating": 4.8,
                 "inv": create_store_inventory(0.97, 1.1)
             },
             {
@@ -438,6 +441,7 @@ def init_db_and_seed():
                     rating=s["rating"]
                 )
                 db.add(pharm)
+        db.commit()
 
         # Seed sample completed and active orders for pharm-001 (Sanjeevani Local Chemist)
         # to populate Owner Dashboard daily sales, top ordered medicines, and incoming orders

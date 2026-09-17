@@ -898,16 +898,31 @@
             <button type="button" class="neu-pill-btn" onclick="searchLocationOnMap();" style="font-weight: 700;">Find</button>
           </div>
 
+          <!-- Quick 1-Tap Auto GPS Button inside Google Maps -->
+          <div class="map-actions-bar">
+            <button type="button" class="auto-gps-trigger-btn" id="btnMapAutoLocate" onclick="detectCurrentLocationOnMap();" title="Detect your live GPS coordinates automatically">
+              <span class="gps-pulse-dot">🎯</span>
+              <span id="mapAutoLocateText">Detect My Current Location (Live GPS)</span>
+            </button>
+          </div>
+
+          <!-- Live GPS Detection Status Message Banner -->
+          <div id="mapGpsDetectionStatus" class="gps-status-msg" style="display: none; margin-bottom: 10px;"></div>
+
           <!-- Interactive Google Maps / Map Canvas Container -->
           <div class="map-canvas-wrapper">
             <div id="googleMapContainer" class="google-map-canvas"></div>
+            <!-- Floating Google Maps GPS target button -->
+            <button type="button" class="map-floating-gps-btn" id="btnFloatingMapGps" onclick="detectCurrentLocationOnMap();" title="Center on My Live GPS Location">
+              <span>🎯</span>
+            </button>
             <div class="map-crosshair-hint">👆 Click or drag map pin to set exact location</div>
           </div>
 
           <!-- Selected Pinned Address Banner -->
           <div class="map-pinned-address-box" id="mapPinnedAddressBox">
             <div style="font-size: 11px; font-weight: 800; color: #059669; text-transform: uppercase; letter-spacing: 0.5px;">📍 Selected Map Location</div>
-            <div id="mapSelectedAddressText" style="font-size: 13.5px; font-weight: 700; color: #0f172a; margin-top: 2px;">Shop #4, Sector 15 Market, Gurgaon (28.4682° N, 77.0425° E)</div>
+            <div id="mapSelectedAddressText" style="font-size: 13.5px; font-weight: 700; color: #0f172a; margin-top: 2px;">Detecting location...</div>
           </div>
 
           <button type="button" class="neu-btn-primary" id="btnConfirmMapLocation" onclick="confirmMapLocation();" style="width: 100%; padding: 13px; font-size: 14px; margin-top: 10px;">

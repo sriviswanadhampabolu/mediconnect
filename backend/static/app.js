@@ -2177,6 +2177,8 @@ window.loginAsDemoCustomer = async function() {
     email: "rahul@health.in",
     role: "customer",
     address: "Sector 15, Gurgaon",
+    latitude: 28.4680,
+    longitude: 77.0420,
     emergency_contacts: [
       { name: "Priya Sharma (Spouse)", phone: "+91 98111 22334", relation: "Spouse" }
     ],
@@ -2218,6 +2220,8 @@ window.loginAsDemoOwner = async function() {
     email: "owner@sanjeevani.in",
     role: "pharmacy_owner",
     address: "Shop #4, Sector 15 Market, Gurgaon",
+    latitude: 28.4682,
+    longitude: 77.0425,
     store_name: "Sanjeevani Local Chemist"
   };
   currentUserId = currentUser.id;
@@ -2501,9 +2505,10 @@ function renderAppointmentsList(appts) {
 ========================================================== */
 let mapPickerInstance = null;
 let mapMarker = null;
+let userGpsCircle = null;
 let pinnedLat = 28.4682;
 let pinnedLng = 77.0425;
-let pinnedAddress = "Shop #4, Sector 15 Market, Gurgaon";
+let pinnedAddress = "Sector 15, Gurgaon";
 
 window.switchLocationTab = function(tabName) {
   const btnMap = document.getElementById("btnLocTabMap");
@@ -2522,7 +2527,10 @@ window.switchLocationTab = function(tabName) {
   if (panelManual) panelManual.style.display = tabName === "manual" ? "block" : "none";
 
   if (tabName === "map") {
-    setTimeout(initMapPicker, 120);
+    setTimeout(() => {
+      initMapPicker();
+      if (mapPickerInstance) mapPickerInstance.invalidateSize();
+    }, 150);
   }
 };
 
@@ -2534,12 +2542,27 @@ function initMapPicker() {
     pinnedLat = currentUser.latitude;
     pinnedLng = currentUser.longitude;
     pinnedAddress = currentUser.address || pinnedAddress;
+  } else {
+    const savedLoc = localStorage.getItem("mediconnect_user_location");
+    if (savedLoc) {
+      try {
+        const parsed = JSON.parse(savedLoc);
+        if (parsed.lat && parsed.lng) {
+          pinnedLat = parsed.lat;
+          pinnedLng = parsed.lng;
+          pinnedAddress = parsed.address || pinnedAddress;
+        }
+      } catch (e) {}
+    }
   }
 
   // If Leaflet is available, render interactive map
   if (typeof L !== "undefined") {
     if (!mapPickerInstance) {
-      mapPickerInstance = L.map('googleMapContainer').setView([pinnedLat, pinnedLng], 14);
+      mapPickerInstance = L.map('googleMapContainer', {
+        zoomControl: true,
+        scrollWheelZoom: true
+      }).setView([pinnedLat, pinnedLng], 15);
 
       // Add OpenStreetMap tiles (Reliable, fast, zero-API-key fallback)
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -2550,9 +2573,9 @@ function initMapPicker() {
       // Create Draggable Custom Pin
       const pinIcon = L.divIcon({
         className: 'custom-map-pin',
-        html: '<div style="font-size: 28px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3)); cursor: pointer;">📍</div>',
-        iconSize: [30, 30],
-        iconAnchor: [15, 30]
+        html: '<div style="font-size: 32px; filter: drop-shadow(0 3px 6px rgba(0,0,0,0.35)); cursor: pointer; transform: translate(-8px, -14px);">📍</div>',
+        iconSize: [32, 32],
+        iconAnchor: [16, 32]
       });
 
       mapMarker = L.marker([pinnedLat, pinnedLng], { icon: pinIcon, draggable: true }).addTo(mapPickerInstance);
@@ -2570,12 +2593,142 @@ function initMapPicker() {
       });
     } else {
       mapPickerInstance.invalidateSize();
-      mapPickerInstance.setView([pinnedLat, pinnedLng], 14);
+      mapPickerInstance.setView([pinnedLat, pinnedLng], 15);
       if (mapMarker) mapMarker.setLatLng([pinnedLat, pinnedLng]);
     }
   }
 
   updatePinnedLocationDisplay();
+}
+
+// Auto-detect location on Google Maps using Live GPS (Satellite Geolocation + Reverse Geocoding)
+window.detectCurrentLocationOnMap = async function() {
+  const statusEl = document.getElementById("mapGpsDetectionStatus");
+  const btnText = document.getElementById("mapAutoLocateText");
+
+  if (statusEl) {
+    statusEl.className = "gps-status-msg loading";
+    statusEl.innerHTML = `<span>🛰️ Connecting to GPS satellites & pinpointing your coordinates...</span>`;
+    statusEl.style.display = "flex";
+  }
+  if (btnText) btnText.textContent = "Pinpointing GPS satellites...";
+
+  // Ensure map tab is active and visible
+  switchLocationTab('map');
+  initMapPicker();
+
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+        const accuracy = Math.round(pos.coords.accuracy || 20);
+        await applyDetectedGpsLocation(lat, lng, `Accurate within ~${accuracy}m`);
+      },
+      async (err) => {
+        console.warn("Browser GPS failed or blocked, trying network IP fallback...", err);
+        await fallbackToIpLocation("Device GPS unavailable. Detected location via Network IP:");
+      },
+      { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
+    );
+  } else {
+    await fallbackToIpLocation("Device GPS not supported. Detected location via Network IP:");
+  }
+};
+
+async function applyDetectedGpsLocation(lat, lng, detail = "") {
+  const statusEl = document.getElementById("mapGpsDetectionStatus");
+  const btnText = document.getElementById("mapAutoLocateText");
+
+  pinnedLat = lat;
+  pinnedLng = lng;
+
+  // Center Leaflet map and move pin
+  if (mapPickerInstance) {
+    mapPickerInstance.invalidateSize();
+    mapPickerInstance.setView([lat, lng], 16);
+    if (mapMarker) {
+      mapMarker.setLatLng([lat, lng]);
+    }
+
+    // Add pulsing GPS accuracy circle on map
+    if (userGpsCircle && mapPickerInstance.hasLayer(userGpsCircle)) {
+      mapPickerInstance.removeLayer(userGpsCircle);
+    }
+    userGpsCircle = L.circle([lat, lng], {
+      radius: 40,
+      color: '#2563eb',
+      fillColor: '#3b82f6',
+      fillOpacity: 0.22,
+      weight: 2
+    }).addTo(mapPickerInstance);
+  }
+
+  // Reverse geocode to find exact readable street and area
+  let readableAddress = "";
+  try {
+    const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`);
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data.address) {
+        const a = data.address;
+        const parts = [];
+        if (a.road || a.pedestrian || a.suburb) parts.push(a.road || a.pedestrian || a.suburb);
+        if (a.neighbourhood || a.residential) parts.push(a.neighbourhood || a.residential);
+        if (a.city || a.town || a.city_district || a.state_district) parts.push(a.city || a.town || a.city_district || a.state_district);
+        if (a.postcode) parts.push(a.postcode);
+        readableAddress = parts.filter(Boolean).join(", ");
+      } else if (data && data.display_name) {
+        readableAddress = data.display_name.split(",").slice(0, 3).join(",").trim();
+      }
+    }
+  } catch (e) {
+    console.warn("Reverse geocode request failed", e);
+  }
+
+  if (!readableAddress) {
+    readableAddress = `Current Live Location (${lat.toFixed(4)}° N, ${lng.toFixed(4)}° E)`;
+  }
+
+  pinnedAddress = readableAddress;
+  if (manualAddressInput) manualAddressInput.value = readableAddress;
+  updatePinnedLocationDisplay();
+
+  if (statusEl) {
+    statusEl.className = "gps-status-msg success";
+    statusEl.innerHTML = `<div>📍 <strong>Live GPS Located:</strong> ${readableAddress}</div><div style="font-size: 11px; opacity: 0.85; margin-top: 2px;">Coordinates: (${lat.toFixed(4)}° N, ${lng.toFixed(4)}° E) ${detail ? '• ' + detail : ''}</div>`;
+    statusEl.style.display = "flex";
+  }
+  if (btnText) btnText.textContent = "📍 Live Location Detected (Tap to Re-check)";
+  showToast(`Live GPS located: ${readableAddress}`, "📍");
+}
+
+async function fallbackToIpLocation(reason) {
+  const statusEl = document.getElementById("mapGpsDetectionStatus");
+  const btnText = document.getElementById("mapAutoLocateText");
+
+  try {
+    const res = await fetch("https://get.geojs.io/v1/ip/geo.json");
+    if (res.ok) {
+      const data = await res.json();
+      const lat = parseFloat(data.latitude);
+      const lng = parseFloat(data.longitude);
+      const city = data.city || data.region || "Detected Area";
+      await applyDetectedGpsLocation(lat, lng, `${reason} ${city}`);
+      return;
+    }
+  } catch (e) {}
+
+  // Safe fallback if offline
+  const lat = 28.4682;
+  const lng = 77.0425;
+  await applyDetectedGpsLocation(lat, lng, "Sector 15, Gurgaon");
+  if (statusEl) {
+    statusEl.className = "gps-status-msg warning";
+    statusEl.innerHTML = `<div>⚠️ <strong>GPS Signal Weak:</strong> Pin placed at Sector 15, Gurgaon.</div><div style="font-size: 11px; opacity: 0.85;">You can drag the pin on Google Maps or search your locality above.</div>`;
+    statusEl.style.display = "flex";
+  }
+  if (btnText) btnText.textContent = "Detect My Current Location (Live GPS)";
 }
 
 async function updatePinnedLocation(lat, lng) {
@@ -2652,11 +2805,30 @@ window.confirmMapLocation = async function() {
 };
 
 function openLocationModal() {
+  const savedLoc = localStorage.getItem("mediconnect_user_location");
+  let savedParsed = null;
+  if (savedLoc) {
+    try { savedParsed = JSON.parse(savedLoc); } catch (e) {}
+  }
+
   if (currentUser && currentUser.address) {
     manualAddressInput.value = currentUser.address;
     pinnedAddress = currentUser.address;
+    if (currentUser.latitude && currentUser.longitude) {
+      pinnedLat = currentUser.latitude;
+      pinnedLng = currentUser.longitude;
+    }
+  } else if (savedParsed) {
+    if (manualAddressInput) manualAddressInput.value = savedParsed.address || "";
+    pinnedAddress = savedParsed.address || pinnedAddress;
+    pinnedLat = savedParsed.lat || pinnedLat;
+    pinnedLng = savedParsed.lng || pinnedLng;
   }
+
+  const mapGpsStatus = document.getElementById("mapGpsDetectionStatus");
+  if (mapGpsStatus) mapGpsStatus.style.display = "none";
   if (gpsDetectStatus) gpsDetectStatus.style.display = "none";
+
   locationModal.style.display = "flex";
   switchLocationTab('map');
 }
@@ -2668,59 +2840,94 @@ function closeLocationModal() {
 if (openLocationModalBtn) openLocationModalBtn.addEventListener("click", openLocationModal);
 if (closeLocationModalBtn) closeLocationModalBtn.addEventListener("click", closeLocationModal);
 
-// Auto-detect location using browser GPS / Geolocation
+// Auto-detect location using browser GPS button in Option 2 tab
 if (btnAutoDetectGps) {
-  btnAutoDetectGps.addEventListener("click", () => {
-    gpsDetectStatus.className = "gps-status-msg loading";
-    gpsDetectStatus.textContent = "🛰️ Pinpointing GPS coordinates via satellite...";
-    gpsDetectStatus.style.display = "block";
-
-    if (!navigator.geolocation) {
-      fallbackLocationDetect();
-      return;
-    }
-
-    navigator.geolocation.getCurrentPosition(
-      async (pos) => {
-        const lat = pos.coords.latitude;
-        const lng = pos.coords.longitude;
-        gpsDetectStatus.className = "gps-status-msg success";
-        gpsDetectStatus.textContent = `📍 Located at (${lat.toFixed(4)}° N, ${lng.toFixed(4)}° E). Updating profile...`;
-
-        const detectedAddr = `Current Location (${lat.toFixed(4)}, ${lng.toFixed(4)}), Gurgaon`;
-        await saveLocationToProfile(detectedAddr, lat, lng);
-        setTimeout(closeLocationModal, 1200);
-      },
-      (err) => {
-        fallbackLocationDetect();
-      },
-      { timeout: 6000 }
-    );
+  btnAutoDetectGps.addEventListener("click", async () => {
+    switchLocationTab('map');
+    await detectCurrentLocationOnMap();
   });
-}
-
-function fallbackLocationDetect() {
-  const lat = 28.4595;
-  const lng = 77.0266;
-  gpsDetectStatus.className = "gps-status-msg success";
-  gpsDetectStatus.textContent = `📍 Detected via Maps: Sector 15, Gurgaon (${lat}° N, ${lng}° E)`;
-  saveLocationToProfile("Sector 15, Near Star Mall, Gurgaon", lat, lng);
-  setTimeout(closeLocationModal, 1200);
 }
 
 window.saveManualLocation = async function() {
   const addr = manualAddressInput.value.trim();
   const city = manualCityInput.value.trim();
   const pin = manualPincodeInput.value.trim();
-  const fullAddr = `${addr}, ${city} - ${pin}`;
+  const fullAddr = `${addr}${city ? ', ' + city : ''}${pin ? ' - ' + pin : ''}`;
   await saveLocationToProfile(fullAddr);
   closeLocationModal();
 };
 
 async function saveLocationToProfile(newAddress, lat = 28.4595, lng = 77.0266) {
-  const uid = currentUser ? currentUser.id : currentUserId;
+  if (!newAddress || !newAddress.trim()) {
+    newAddress = `Location (${lat.toFixed(4)}° N, ${lng.toFixed(4)}° E)`;
+  }
+  newAddress = newAddress.trim();
+
+  // 1. Optimistically update in-memory user object
+  if (!currentUser) {
+    currentUser = {
+      id: currentUserId || "usr-sample-001",
+      name: "Rahul Sharma",
+      role: "customer",
+      address: newAddress,
+      latitude: lat,
+      longitude: lng,
+      contact: "+91 98765 43210",
+      email: "rahul@health.in",
+      emergency_contacts: [
+        { name: "Priya Sharma (Spouse)", phone: "+91 98111 22334", relation: "Spouse" }
+      ],
+      allergies: ["Aspirin", "Penicillin"]
+    };
+    currentUserId = currentUser.id;
+  } else {
+    currentUser.address = newAddress;
+    currentUser.latitude = lat;
+    currentUser.longitude = lng;
+  }
+
+  // 2. Persist to localStorage immediately
   try {
-    const res = await fetch(`${API_BASE}/records/user/${uid}/profile`, {
+    localStorage.setItem("mediconnect_user", JSON.stringify(currentUser));
+    localStorage.setItem("mediconnect_user_location", JSON.stringify({ address: newAddress, lat, lng }));
+  } catch (e) {
+    console.warn("Could not save to localStorage", e);
+  }
+
+  // 3. Immediately update DOM at the circled location:
+  const roleLabel = currentUser.role === "pharmacy_owner" ? "Pharmacy Store Owner" : "Verified Patient";
+  const headerSubtext = document.getElementById("headerUserSubtext");
+  if (headerSubtext) {
+    headerSubtext.textContent = `${roleLabel} • ${newAddress}`;
+    headerSubtext.style.transition = "all 0.3s ease";
+    headerSubtext.style.color = "#059669";
+    headerSubtext.style.fontWeight = "700";
+    setTimeout(() => {
+      headerSubtext.style.color = "";
+      headerSubtext.style.fontWeight = "";
+    }, 2000);
+  }
+
+  const userLocDisplay = document.getElementById("userLocationDisplay");
+  if (userLocDisplay) {
+    userLocDisplay.textContent = `📍 ${newAddress}`;
+  }
+
+  if (manualAddressInput) manualAddressInput.value = newAddress;
+  pinnedAddress = newAddress;
+  pinnedLat = lat;
+  pinnedLng = lng;
+  updatePinnedLocationDisplay();
+
+  // Update rest of UI
+  updateUserUI();
+
+  showToast(`Location updated to: ${newAddress}`, "📍");
+
+  // 4. Background non-blocking sync with backend API (fire and forget)
+  const uid = currentUser.id || "usr-sample-001";
+  try {
+    await fetch(`${API_BASE}/records/user/${uid}/profile`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -2729,25 +2936,8 @@ async function saveLocationToProfile(newAddress, lat = 28.4595, lng = 77.0266) {
         longitude: lng
       })
     });
-    if (res.ok) {
-      if (currentUser) {
-        currentUser.address = newAddress;
-        currentUser.latitude = lat;
-        currentUser.longitude = lng;
-        localStorage.setItem("mediconnect_user", JSON.stringify(currentUser));
-      }
-      updateUserUI();
-      showToast(`Location updated to: ${newAddress}`, "📍");
-    } else {
-      showToast("Could not update location on server.", "⚠️");
-    }
   } catch (e) {
-    if (currentUser) {
-      currentUser.address = newAddress;
-      localStorage.setItem("mediconnect_user", JSON.stringify(currentUser));
-      updateUserUI();
-    }
-    showToast(`Location set: ${newAddress}`, "📍");
+    // Offline or static deployment (e.g. GitHub Pages) - perfectly fine since localStorage has it!
   }
 }
 

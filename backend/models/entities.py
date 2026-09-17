@@ -121,7 +121,7 @@ class Payment(Base):
     
     id = Column(String(36), primary_key=True, default=gen_uuid)
     user_id = Column(String(36), ForeignKey("users.id"), nullable=False)
-    order_id = Column(String(36), ForeignKey("orders.id"), nullable=False)
+    order_id = Column(String(64), nullable=True)
     amount = Column(Float, nullable=False)
     auto_approved = Column(Boolean, default=True)
     payment_method = Column(String(50), default="UPI_AUTOPAY")

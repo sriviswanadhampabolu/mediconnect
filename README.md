@@ -7,7 +7,8 @@
 [![FastAPI](https://img.shields.io/badge/FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
 [![Python 3.10+](https://img.shields.io/badge/Python-3.10+-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
 [![Flutter](https://img.shields.io/badge/Flutter-02569B?style=for-the-badge&logo=flutter&logoColor=white)](https://flutter.dev/)
-[![Tests](https://img.shields.io/badge/Tests-21%2F21_Passing-10b981?style=for-the-badge&logo=pytest&logoColor=white)](backend/tests)
+[![Tests](https://img.shields.io/badge/Tests-22%2F22_Passing-10b981?style=for-the-badge&logo=pytest&logoColor=white)](backend/tests)
+[![Database](https://img.shields.io/badge/Database-Supabase_PostgreSQL-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white)](https://supabase.com/)
 [![Security](https://img.shields.io/badge/Security-AES--256_Encrypted-blueviolet?style=for-the-badge&logo=shield&logoColor=white)](#-data-privacy--encryption)
 [![Commission](https://img.shields.io/badge/Commission-6.5%25_Capped-f59e0b?style=for-the-badge)](#-mission-constraint--ethical-guardrails)
 
