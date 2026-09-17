@@ -103,12 +103,36 @@ def get_nearby_pharmacies(
     Hyperlocal discovery of local independent pharmacies.
     Dynamically identifies nearby village/neighborhood chemists based on GPS coordinates or village name.
     """
-    # Extract village from address if not explicitly passed
-    detected_village = village
+    # Extract village from village param or address
+    detected_village = village.strip() if village else None
     if not detected_village and address:
-        addr_clean = address.split(",")[0].strip()
-        if addr_clean and not addr_clean.lower().startswith("current live location"):
-            detected_village = addr_clean
+        raw_parts = [p.strip() for p in address.split(",") if p.strip()]
+        for p in raw_parts:
+            low = p.lower()
+            if not low.startswith("current live location") and not any(k in low for k in ["flat", "house", "shop", "plot", "road", "street", "lane"]):
+                detected_village = p
+                break
+        if not detected_village and raw_parts:
+            detected_village = raw_parts[0]
+
+    if detected_village:
+        import re
+        clean_v = re.sub(r'^(Flat|Shop|House|Plot|Booth|H\.No|Ward|Sector)\s*#?\d+[\w\s]*', '', detected_village, flags=re.IGNORECASE).strip()
+        if clean_v:
+            detected_village = clean_v
+        if "," in detected_village:
+            detected_village = detected_village.split(",")[0].strip()
+
+    is_custom_village = bool(detected_village and detected_village.lower() not in ["sector 15", "sector 15, gurgaon", "default"])
+
+    if is_custom_village and detected_village:
+        return generate_village_pharmacies(
+            village=detected_village,
+            address=address or detected_village,
+            lat=lat,
+            lng=lng,
+            query=query
+        )
 
     db = SessionLocal()
     try:
@@ -144,24 +168,6 @@ def get_nearby_pharmacies(
             })
             
         results.sort(key=lambda x: x["distance_km"])
-
-        # If user is in a village or area outside existing DB clusters (>15km)
-        # or if a specific village was selected that isn't Gurgaon
-        min_distance = results[0]["distance_km"] if results else 9999.0
-        is_far = min_distance > 15.0
-        has_custom_village = bool(detected_village and detected_village.lower() not in ["sector 15", "gurgaon", "gurugram"])
-
-        if (is_far or has_custom_village) and detected_village:
-            village_shops = generate_village_pharmacies(
-                village=detected_village,
-                address=address or detected_village,
-                lat=lat,
-                lng=lng,
-                query=query
-            )
-            # Combine village shops first, followed by other shops
-            return village_shops
-
         return results
     finally:
         db.close()

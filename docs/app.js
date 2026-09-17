@@ -61,11 +61,24 @@ function saveAppointmentToLocalStorage(appt) {
 }
 
 function getDemoShops(query = "", village = "", address = "") {
-  const currentLoc = village || currentUser?.village || (currentUser?.address ? currentUser.address.split(",")[0].trim() : "");
-  const isCustomVillage = currentLoc && !currentLoc.toLowerCase().includes("sector 15") && !currentLoc.toLowerCase().includes("gurgaon");
+  let currentLoc = village || currentUser?.village || pinnedVillage || "";
+  if (!currentLoc && currentUser?.address) {
+    currentLoc = currentUser.address.split(",")[0].trim();
+  }
+  if (!currentLoc && address) {
+    currentLoc = address.split(",")[0].trim();
+  }
 
-  if (isCustomVillage) {
-    const cleanVillage = currentLoc.replace(/Flat\s*\d+|Shop\s*\d+|House\s*\d+|Sector\s*\d+/gi, "").trim() || currentLoc;
+  // Extract clean village name
+  let cleanVillage = (currentLoc || "").split(",")[0].trim();
+  cleanVillage = cleanVillage.replace(/^(Flat|Shop|House|Plot|Booth|H\.No|Ward|Sector)\s*#?\d+[\w\s]*/gi, "").trim() || cleanVillage;
+  if (cleanVillage) {
+    cleanVillage = cleanVillage.charAt(0).toUpperCase() + cleanVillage.slice(1);
+  }
+
+  const isDefaultSector15 = !cleanVillage || cleanVillage.toLowerCase() === "sector 15" || cleanVillage.toLowerCase() === "default";
+
+  if (!isDefaultSector15) {
     const cleanAddr = address || currentUser?.address || `${cleanVillage} Main Road`;
     const vHash = Math.abs(cleanVillage.split("").reduce((acc, c) => acc + c.charCodeAt(0), 0)) % 9000 + 1000;
 
@@ -113,7 +126,7 @@ function getDemoShops(query = "", village = "", address = "") {
       {
         id: `pharm-vil-${vHash}-04`,
         name: `Sanjeevani Day-Night Chemist (${cleanVillage})`,
-        address: `Near High School Chowk, ${cleanAddr}`,
+        address: `Near Community Health Center & High School, ${cleanAddr}`,
         phone: `+91 98${vHash % 89 + 10} 45678`,
         distance_km: 1.7,
         rating: 4.6,
@@ -138,54 +151,62 @@ function getDemoShops(query = "", village = "", address = "") {
     {
       id: "pharm-001",
       name: "Sanjeevani Local Chemist",
-      address: "Shop #4, Sector 15 Market, Near Mother Dairy, Gurgaon",
+      address: "Shop 4, Sector 15 Market, Gurgaon",
       phone: "+91 98101 23456",
-      distance_km: 0.3,
+      distance_km: 0.4,
+      response_time_min: 8,
       rating: 4.9,
+      is_small_local_business: true,
       inventory: [
-        { generic_name: "Paracetamol 500mg Tablet", branded_name: "Crocin / Dolo", generic_price: 18, branded_price: 45, stock: 120 },
-        { generic_name: "Cetirizine 10mg Tablet", branded_name: "Zyrtec / Cetzine", generic_price: 15, branded_price: 42, stock: 110 },
-        { generic_name: "Omeprazole 20mg Capsule", branded_name: "Omez 20", generic_price: 22, branded_price: 62, stock: 105 },
-        { generic_name: "Oral Rehydration Salts (ORS) Sachet", branded_name: "Electral", generic_price: 14, branded_price: 22, stock: 200 }
+        { generic_name: "Paracetamol 500mg Tablet", branded_name: "Crocin 500", generic_price: 18.0, branded_price: 45.0, stock: 120 },
+        { generic_name: "Cetirizine 10mg Tablet", branded_name: "Zyrtec / Cetzine", generic_price: 15.0, branded_price: 42.0, stock: 110 },
+        { generic_name: "Omeprazole 20mg Capsule", branded_name: "Omez 20", generic_price: 22.0, branded_price: 62.0, stock: 105 },
+        { generic_name: "Oral Rehydration Salts (ORS) Sachet", branded_name: "Electral", generic_price: 14.0, branded_price: 22.0, stock: 200 }
       ]
     },
     {
       id: "pharm-002",
-      name: "Gupta Medical & Day-Night Store",
+      name: "Gupta Medical & Day-Night Health Store",
       address: "Booth 12, Main Commercial Complex, Sector 15, Gurgaon",
       phone: "+91 98102 34567",
       distance_km: 0.8,
+      response_time_min: 12,
       rating: 4.7,
+      is_small_local_business: true,
       inventory: [
-        { generic_name: "Paracetamol 500mg Tablet", branded_name: "Crocin 500", generic_price: 19, branded_price: 45, stock: 95 },
-        { generic_name: "Amoxicillin 500mg Capsule", branded_name: "Mox 500", generic_price: 45, branded_price: 110, stock: 60 },
-        { generic_name: "Ibuprofen 400mg Tablet", branded_name: "Brufen 400", generic_price: 22, branded_price: 52, stock: 80 }
+        { generic_name: "Paracetamol 500mg Tablet", branded_name: "Crocin 500", generic_price: 19.0, branded_price: 45.0, stock: 95 },
+        { generic_name: "Amoxicillin 500mg Capsule", branded_name: "Mox 500", generic_price: 45.0, branded_price: 110.0, stock: 60 },
+        { generic_name: "Ibuprofen 400mg Tablet", branded_name: "Brufen 400", generic_price: 22.0, branded_price: 52.0, stock: 80 }
       ]
     },
     {
       id: "pharm-003",
-      name: "Apollo Pharmacy 24/7",
-      address: "SCO 45, Ground Floor, Sector 14, Gurgaon",
+      name: "Apollo Pharmacy 24x7 Sector 14",
+      address: "SCO 45, Ground Floor, Sector 14 Main Market, Gurgaon",
       phone: "+91 98103 45678",
       distance_km: 1.2,
+      response_time_min: 15,
       rating: 4.8,
+      is_small_local_business: true,
       inventory: [
-        { generic_name: "Paracetamol 650mg Tablet", branded_name: "Dolo 650", generic_price: 24, branded_price: 58, stock: 140 },
-        { generic_name: "Pantoprazole 40mg Tablet", branded_name: "Pan 40", generic_price: 28, branded_price: 88, stock: 130 },
-        { generic_name: "Vitamin C 500mg Chewable", branded_name: "Limcee", generic_price: 15, branded_price: 32, stock: 180 }
+        { generic_name: "Paracetamol 650mg Tablet", branded_name: "Dolo 650", generic_price: 24.0, branded_price: 58.0, stock: 140 },
+        { generic_name: "Pantoprazole 40mg Tablet", branded_name: "Pan 40", generic_price: 28.0, branded_price: 88.0, stock: 130 },
+        { generic_name: "Vitamin C 500mg Chewable", branded_name: "Limcee", generic_price: 15.0, branded_price: 32.0, stock: 180 }
       ]
     },
     {
       id: "pharm-004",
-      name: "MedPlus Chemist & Wellness",
+      name: "MedPlus Chemist & Wellness Store",
       address: "SCF 22, Old Judicial Complex, Civil Lines, Gurgaon",
       phone: "+91 98104 56789",
-      distance_km: 1.7,
+      distance_km: 1.5,
+      response_time_min: 11,
       rating: 4.6,
+      is_small_local_business: true,
       inventory: [
-        { generic_name: "Cetirizine 10mg Tablet", branded_name: "Cetzine", generic_price: 15, branded_price: 42, stock: 90 },
-        { generic_name: "Metformin 500mg SR Tablet", branded_name: "Glycomet", generic_price: 18, branded_price: 42, stock: 150 },
-        { generic_name: "Povidone Iodine 5% Ointment", branded_name: "Betadine", generic_price: 35, branded_price: 78, stock: 65 }
+        { generic_name: "Cetirizine 10mg Tablet", branded_name: "Cetzine", generic_price: 15.0, branded_price: 42.0, stock: 90 },
+        { generic_name: "Metformin 500mg SR Tablet", branded_name: "Glycomet", generic_price: 18.0, branded_price: 42.0, stock: 150 },
+        { generic_name: "Povidone Iodine 5% Ointment", branded_name: "Betadine", generic_price: 35.0, branded_price: 78.0, stock: 65 }
       ]
     }
   ];
@@ -2974,21 +2995,52 @@ if (btnAutoDetectGps) {
 }
 
 window.saveManualLocation = async function() {
-  const addr = manualAddressInput.value.trim();
-  const city = manualCityInput.value.trim();
-  const pin = manualPincodeInput.value.trim();
-  const fullAddr = `${addr}${city ? ', ' + city : ''}${pin ? ' - ' + pin : ''}`;
-  pinnedVillage = addr || city || "Local Area";
-  await saveLocationToProfile(fullAddr, pinnedLat, pinnedLng);
+  const addr = manualAddressInput ? manualAddressInput.value.trim() : "";
+  const city = manualCityInput ? manualCityInput.value.trim() : "";
+  const pin = manualPincodeInput ? manualPincodeInput.value.trim() : "";
+  
+  // Extract village name from addr or city
+  let village = "";
+  if (city && !["gurgaon", "gurugram"].includes(city.toLowerCase())) {
+    village = city;
+  } else if (addr) {
+    village = addr.split(",")[0].trim();
+  } else {
+    village = city || "Local Area";
+  }
+  
+  village = village.replace(/^(Flat|Shop|House|Plot|Booth|H\.No|Ward|Sector)\s*#?\d+[\w\s]*/gi, "").trim() || village;
+  if (village) {
+    village = village.charAt(0).toUpperCase() + village.slice(1);
+  }
+
+  const fullAddr = `${addr}${city ? ", " + city : ""}${pin ? " - " + pin : ""}`;
+  pinnedVillage = village;
+  await saveLocationToProfile(fullAddr, pinnedLat, pinnedLng, village);
   closeLocationModal();
 };
 
-async function saveLocationToProfile(newAddress, lat = 28.4595, lng = 77.0266) {
+window.confirmMapLocation = async function() {
+  const village = pinnedVillage || (pinnedAddress ? pinnedAddress.split(",")[0].trim() : "Local Area");
+  await saveLocationToProfile(pinnedAddress, pinnedLat, pinnedLng, village);
+  closeLocationModal();
+};
+
+async function saveLocationToProfile(newAddress, lat = 28.4595, lng = 77.0266, customVillage = "") {
   if (!newAddress || !newAddress.trim()) {
     newAddress = `Location (${lat.toFixed(4)}° N, ${lng.toFixed(4)}° E)`;
   }
   newAddress = newAddress.trim();
-  const villageName = pinnedVillage || (newAddress ? newAddress.split(",")[0].trim() : "Sector 15");
+  
+  let villageName = customVillage || pinnedVillage;
+  if (!villageName && newAddress) {
+    villageName = newAddress.split(",")[0].trim();
+  }
+  villageName = (villageName || "").replace(/^(Flat|Shop|House|Plot|Booth|H\.No|Ward|Sector)\s*#?\d+[\w\s]*/gi, "").trim() || villageName || "Sector 15";
+  if (villageName) {
+    villageName = villageName.charAt(0).toUpperCase() + villageName.slice(1);
+  }
+  pinnedVillage = villageName;
 
   // 1. Optimistically update in-memory user object
   if (!currentUser) {
@@ -3015,7 +3067,7 @@ async function saveLocationToProfile(newAddress, lat = 28.4595, lng = 77.0266) {
     currentUser.longitude = lng;
   }
 
-  // Update nearLocationName element in UI
+  // Update nearLocationName element in UI immediately
   const nearLoc = document.getElementById("nearLocationName");
   if (nearLoc) {
     nearLoc.textContent = villageName;
@@ -3029,7 +3081,7 @@ async function saveLocationToProfile(newAddress, lat = 28.4595, lng = 77.0266) {
     console.warn("Could not save to localStorage", e);
   }
 
-  // 3. Immediately update DOM at the circled location:
+  // 3. Immediately update DOM at the header and location pills
   const roleLabel = currentUser.role === "pharmacy_owner" ? "Pharmacy Store Owner" : "Verified Patient";
   const headerSubtext = document.getElementById("headerUserSubtext");
   if (headerSubtext) {
@@ -3057,7 +3109,14 @@ async function saveLocationToProfile(newAddress, lat = 28.4595, lng = 77.0266) {
   // Update rest of UI
   updateUserUI();
 
-  showToast(`Location updated to: ${newAddress}`, "📍");
+  // Show chemist recommendations container and immediately re-render chemist cards in BOTH tabs
+  if (chemistShopsBox) {
+    chemistShopsBox.style.display = "flex";
+  }
+  await loadNearbyChemists();
+  await loadFullChemistList();
+
+  showToast(`Location updated to ${villageName}! Chemist stores updated.`, "📍");
 
   // 4. Background non-blocking sync with backend API (fire and forget)
   const uid = currentUser.id || "usr-sample-001";
@@ -3068,12 +3127,11 @@ async function saveLocationToProfile(newAddress, lat = 28.4595, lng = 77.0266) {
       body: JSON.stringify({
         address: newAddress,
         latitude: lat,
-        longitude: lng
+        longitude: lng,
+        village: villageName
       })
     });
-  } catch (e) {
-    // Offline or static deployment (e.g. GitHub Pages) - perfectly fine since localStorage has it!
-  }
+  } catch (e) {}
 }
 
 /* ==========================================================
@@ -4258,7 +4316,8 @@ function applyAppLanguage(langCode) {
   loadFullChemistList();
 }
 
-// Initialize language on startup
+// Initialize language and components on startup
+applyAppLanguage(currentAppLang);
 
 /* ==========================================================
    PATIENT PROFILE MODAL LOGIC
