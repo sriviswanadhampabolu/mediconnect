@@ -2757,19 +2757,6 @@ window.loginAsDemoOwner = async function() {
   showToast("Logged in as Ramesh Gupta (Store Owner)!", "🏪");
   loadOwnerDashboard();
 };
-    role: "pharmacy_owner",
-    address: "Shop #4, Sector 15 Market, Gurgaon",
-    latitude: 28.4682,
-    longitude: 77.0425,
-    store_name: "Sanjeevani Local Chemist"
-  };
-  currentUserId = currentUser.id;
-  localStorage.setItem("mediconnect_user", JSON.stringify(currentUser));
-  updateUserUI();
-  showDashboardView();
-  showToast("Logged in as Ramesh Gupta (Store Owner)!", "🏪");
-  loadOwnerDashboard();
-};
 
 // Logout user
 window.logoutUser = function() {
