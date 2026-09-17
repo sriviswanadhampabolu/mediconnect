@@ -60,18 +60,35 @@ function saveAppointmentToLocalStorage(appt) {
   }
 }
 
+function extractVillageName(address, defaultFallback = "Rampur") {
+  if (!address || typeof address !== "string") return defaultFallback;
+  let cleaned = address
+    .replace(/Pinned Location\s*\([^)]*\),?/gi, "")
+    .replace(/\([^)]*\)/gi, "")
+    .replace(/\bLocal Area\b,?\s*/gi, "")
+    .replace(/^(Flat|Shop|House|Plot|Booth|H\.No|Ward|Sector)\s*#?\d+[\w\s]*,?/gi, "")
+    .trim();
+
+  const parts = cleaned.split(",").map(p => p.trim()).filter(p => p && !/^\d+$/.test(p) && !/^-\s*\d+/.test(p) && p.toLowerCase() !== "local area");
+  if (parts.length > 0) {
+    let v = parts[0].replace(/-\s*\d+/g, "").trim();
+    if (v && v.toLowerCase() !== "local area") return v.charAt(0).toUpperCase() + v.slice(1);
+  }
+  return defaultFallback;
+}
+
 function getDemoShops(query = "", village = "", address = "") {
   let currentLoc = village || currentUser?.village || pinnedVillage || "";
-  if (!currentLoc && currentUser?.address) {
-    currentLoc = currentUser.address.split(",")[0].trim();
-  }
-  if (!currentLoc && address) {
-    currentLoc = address.split(",")[0].trim();
+  if (!currentLoc || currentLoc.toLowerCase() === "local area") {
+    currentLoc = extractVillageName(address || currentUser?.address || pinnedAddress, "Rampur");
   }
 
   // Extract clean village name
-  let cleanVillage = (currentLoc || "").split(",")[0].trim();
-  cleanVillage = cleanVillage.replace(/^(Flat|Shop|House|Plot|Booth|H\.No|Ward|Sector)\s*#?\d+[\w\s]*/gi, "").trim() || cleanVillage;
+  let cleanVillage = extractVillageName(currentLoc, "Rampur");
+  cleanVillage = cleanVillage.replace(/\bLocal Area\b,?\s*/gi, "").replace(/^(Flat|Shop|House|Plot|Booth|H\.No|Ward|Sector)\s*#?\d+[\w\s]*/gi, "").trim() || cleanVillage;
+  if (!cleanVillage || cleanVillage.toLowerCase() === "local area") {
+    cleanVillage = "Rampur";
+  }
   if (cleanVillage) {
     cleanVillage = cleanVillage.charAt(0).toUpperCase() + cleanVillage.slice(1);
   }
@@ -1155,7 +1172,10 @@ async function loadNearbyChemists() {
   if (!chemistShopsBox || !chemistList) return;
   chemistShopsBox.style.display = "flex";
 
-  const village = currentUser?.village || (currentUser?.address ? currentUser.address.split(",")[0].trim() : "");
+  let village = currentUser?.village || pinnedVillage || "";
+  if (!village || village.toLowerCase() === "local area") {
+    village = extractVillageName(currentUser?.address || pinnedAddress, "Rampur");
+  }
   const addr = currentUser?.address || "";
   const lat = currentUser?.latitude || 28.4682;
   const lng = currentUser?.longitude || 77.0425;
@@ -1406,7 +1426,10 @@ async function loadFullChemistList(query = "") {
   const findingText = typeof t === "function" ? t('findingStores', 'Finding trusted neighborhood medical stores...') : 'Finding trusted neighborhood medical stores...';
   fullChemistList.innerHTML = `<div style='color:#94a3b8; padding:10px;'>${findingText}</div>`;
 
-  const village = currentUser?.village || (currentUser?.address ? currentUser.address.split(",")[0].trim() : "");
+  let village = currentUser?.village || pinnedVillage || "";
+  if (!village || village.toLowerCase() === "local area") {
+    village = extractVillageName(currentUser?.address || pinnedAddress, "Rampur");
+  }
   const addr = currentUser?.address || "";
   const lat = currentUser?.latitude || 28.4682;
   const lng = currentUser?.longitude || 77.0425;
@@ -2886,12 +2909,16 @@ async function updatePinnedLocation(lat, lng) {
       const data = await res.json();
       if (data && data.display_name) {
         const addrParts = data.address || {};
-        const detectedVil = addrParts.village || addrParts.hamlet || addrParts.suburb || addrParts.neighbourhood || addrParts.town || addrParts.city_district || addrParts.city || "Local Area";
+        const rawVil = addrParts.village || addrParts.hamlet || addrParts.suburb || addrParts.neighbourhood || addrParts.town || addrParts.city_district || addrParts.city || addrParts.county || "";
+        let detectedVil = rawVil;
+        if (!detectedVil || detectedVil.toLowerCase() === "local area") {
+          detectedVil = addrParts.town || addrParts.city || addrParts.county || "Rampur";
+        }
         pinnedVillage = detectedVil;
         const road = addrParts.road || addrParts.suburb || addrParts.neighbourhood || detectedVil;
-        const city = addrParts.city || addrParts.town || addrParts.state_district || "Gurgaon";
-        const postcode = addrParts.postcode || "122001";
-        pinnedAddress = `${road}, ${city} - ${postcode}`;
+        const city = addrParts.city || addrParts.town || addrParts.county || addrParts.state_district || detectedVil;
+        const postcode = addrParts.postcode || "";
+        pinnedAddress = `${road}, ${city}${postcode ? " - " + postcode : ""}`;
 
         if (manualAddressInput) manualAddressInput.value = road;
         if (manualCityInput) manualCityInput.value = city;
@@ -2917,7 +2944,46 @@ window.searchLocationOnMap = async function() {
   if (!input || !input.value.trim()) return;
   const query = input.value.trim();
 
-  showToast(`Searching Google Maps for "${query}"...`, "🔍");
+  let villageName = query.split(",")[0].trim();
+  villageName = villageName.replace(/^(Flat|Shop|House|Plot|Booth|H\.No|Ward|Sector)\s*#?\d+[\w\s]*/gi, "").trim() || villageName;
+  if (villageName) {
+    villageName = villageName.charAt(0).toUpperCase() + villageName.slice(1);
+  }
+
+  const knownLocations = {
+    "rampur": { lat: 28.8073, lon: 79.0274, full: "Rampur, Uttar Pradesh" },
+    "narsingi": { lat: 17.3820, lon: 78.3619, full: "Narsingi, Hyderabad, Telangana" },
+    "gurgaon": { lat: 28.4595, lon: 77.0266, full: "Sector 15, Gurgaon, Haryana" },
+    "gurugram": { lat: 28.4595, lon: 77.0266, full: "Sector 15, Gurugram, Haryana" }
+  };
+
+  const qKey = query.toLowerCase();
+  let matched = null;
+  for (const [k, v] of Object.entries(knownLocations)) {
+    if (qKey.includes(k)) {
+      matched = v;
+      break;
+    }
+  }
+
+  pinnedVillage = villageName;
+  pinnedAddress = matched ? matched.full : `${villageName}, Local Area`;
+  if (matched) {
+    pinnedLat = matched.lat;
+    pinnedLng = matched.lon;
+  }
+
+  if (mapPickerInstance && mapMarker) {
+    mapPickerInstance.setView([pinnedLat, pinnedLng], 14);
+    mapMarker.setLatLng([pinnedLat, pinnedLng]);
+  }
+  updatePinnedLocationDisplay();
+
+  if (manualAddressInput) manualAddressInput.value = pinnedAddress;
+  if (manualCityInput) manualCityInput.value = pinnedVillage;
+
+  showToast(`Found: ${pinnedAddress}`, "📍");
+
   try {
     const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query + ", India")}&limit=1`);
     if (res.ok) {
@@ -2928,27 +2994,17 @@ window.searchLocationOnMap = async function() {
         pinnedLat = lat;
         pinnedLng = lon;
         pinnedAddress = results[0].display_name.split(",").slice(0, 3).join(",");
-        pinnedVillage = query.split(",")[0].trim() || results[0].display_name.split(",")[0].trim();
-
         if (mapPickerInstance && mapMarker) {
-          mapPickerInstance.setView([lat, lon], 15);
+          mapPickerInstance.setView([lat, lon], 14);
           mapMarker.setLatLng([lat, lon]);
         }
         updatePinnedLocationDisplay();
-        showToast(`Found: ${pinnedAddress}`, "📍");
-        return;
       }
     }
-    showToast("Location not found on map. Try entering sector or city.", "⚠️");
-  } catch(e) {
-    showToast("Map search failed. Please tap directly on the map.", "⚠️");
-  }
+  } catch(e) {}
 };
 
-window.confirmMapLocation = async function() {
-  await saveLocationToProfile(pinnedAddress, pinnedLat, pinnedLng);
-  closeLocationModal();
-};
+// duplicate confirmMapLocation removed
 
 function openLocationModal() {
   const savedLoc = localStorage.getItem("mediconnect_user_location");
@@ -3033,10 +3089,13 @@ async function saveLocationToProfile(newAddress, lat = 28.4595, lng = 77.0266, c
   newAddress = newAddress.trim();
   
   let villageName = customVillage || pinnedVillage;
-  if (!villageName && newAddress) {
-    villageName = newAddress.split(",")[0].trim();
+  if (!villageName || villageName.toLowerCase() === "local area") {
+    villageName = extractVillageName(newAddress, "Rampur");
   }
-  villageName = (villageName || "").replace(/^(Flat|Shop|House|Plot|Booth|H\.No|Ward|Sector)\s*#?\d+[\w\s]*/gi, "").trim() || villageName || "Sector 15";
+  villageName = (villageName || "").replace(/\bLocal Area\b,?\s*/gi, "").replace(/^(Flat|Shop|House|Plot|Booth|H\.No|Ward|Sector)\s*#?\d+[\w\s]*/gi, "").trim() || villageName || "Sector 15";
+  if (villageName.toLowerCase() === "local area") {
+    villageName = "Rampur";
+  }
   if (villageName) {
     villageName = villageName.charAt(0).toUpperCase() + villageName.slice(1);
   }

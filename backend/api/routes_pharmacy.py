@@ -105,8 +105,11 @@ def get_nearby_pharmacies(
     """
     # Extract village from village param or address
     detected_village = village.strip() if village else None
+    if detected_village and detected_village.lower() in ["local area", "local", "detected area"]:
+        detected_village = None
+
     if not detected_village and address:
-        raw_parts = [p.strip() for p in address.split(",") if p.strip()]
+        raw_parts = [p.strip() for p in address.split(",") if p.strip() and p.strip().lower() != "local area"]
         for p in raw_parts:
             low = p.lower()
             if not low.startswith("current live location") and not any(k in low for k in ["flat", "house", "shop", "plot", "road", "street", "lane"]):
@@ -122,6 +125,8 @@ def get_nearby_pharmacies(
             detected_village = clean_v
         if "," in detected_village:
             detected_village = detected_village.split(",")[0].strip()
+        if detected_village.lower() == "local area":
+            detected_village = "Rampur"
 
     is_custom_village = bool(detected_village and detected_village.lower() not in ["sector 15", "sector 15, gurgaon", "default"])
 
