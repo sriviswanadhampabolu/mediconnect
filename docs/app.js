@@ -2450,6 +2450,16 @@ function updateUserUI() {
       if (ownerSection) ownerSection.style.display = "block";
       if (consultationCard) consultationCard.style.display = "none";
       
+      // USER REQUIREMENT: In owner dashboard, show owner's profile name instead of Sanjeevani
+      const ownerStoreTitleEl = document.getElementById("ownerStoreTitle");
+      if (ownerStoreTitleEl) {
+        ownerStoreTitleEl.textContent = cleanDisplayName;
+      }
+      const ownerStoreSubtitleEl = document.getElementById("ownerStoreSubtitle");
+      if (ownerStoreSubtitleEl) {
+        ownerStoreSubtitleEl.textContent = `${addr} • Partner Store`;
+      }
+
       // USER REQUIREMENT: In owner dashboard, remove medicine ordering feature & health card icon
       if (tabNavCard) tabNavCard.style.display = "none";
       if (tabNavStores) tabNavStores.style.display = "none";
@@ -2856,6 +2866,21 @@ if (logoutBtn) {
 window.loadOwnerDashboard = async function() {
   const container = document.getElementById("ownerInventoryList");
   if (!container) return;
+
+  // Set owner store title to the logged-in owner's profile name and location
+  const ownerStoreTitleEl = document.getElementById("ownerStoreTitle");
+  if (ownerStoreTitleEl && currentUser) {
+    const cleanDisplayName = (currentUser.name || "Owner")
+      .replace(/\s*\((Store )?Owner\)/gi, "")
+      .replace(/Sanjeevani Chemist/gi, "Ramesh Gupta")
+      .trim();
+    ownerStoreTitleEl.textContent = cleanDisplayName;
+  }
+  const ownerStoreSubtitleEl = document.getElementById("ownerStoreSubtitle");
+  if (ownerStoreSubtitleEl && currentUser) {
+    const ownerLoc = currentUser.address || (currentUser.village ? `${currentUser.village} Area` : "Local Pharmacy Store");
+    ownerStoreSubtitleEl.textContent = `${ownerLoc} • Partner Store`;
+  }
 
   try {
     const res = await fetch(`${API_BASE}/pharmacy/owner/dashboard/pharm-001`);
