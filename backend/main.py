@@ -1,6 +1,14 @@
+import sys
+from pathlib import Path
+
+_current_dir = Path(__file__).resolve().parent
+_root_dir = _current_dir.parent
+for _path in [str(_root_dir), str(_current_dir)]:
+    if _path not in sys.path:
+        sys.path.insert(0, _path)
+
 from contextlib import asynccontextmanager
 import os
-from pathlib import Path
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
