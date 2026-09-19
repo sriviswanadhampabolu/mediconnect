@@ -179,6 +179,32 @@ class _ServerConfigDialogState extends State<ServerConfigDialog> {
             const SizedBox(height: 8),
 
             InkWell(
+              onTap: () => _saveAndApply('https://mediconnect-yt1e.onrender.com/api', false),
+              borderRadius: BorderRadius.circular(14),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                decoration: AppTheme.neuRaised(radius: 14),
+                child: const Row(
+                  children: [
+                    Text('☁️', style: TextStyle(fontSize: 18)),
+                    SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Render Cloud Live Backend', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppTheme.primary)),
+                          Text('https://mediconnect-yt1e.onrender.com/api', style: TextStyle(fontSize: 11, color: AppTheme.textSecondary)),
+                        ],
+                      ),
+                    ),
+                    Icon(Icons.chevron_right, size: 18, color: AppTheme.primary),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+
+            InkWell(
               onTap: () => _saveAndApply('', true),
               borderRadius: BorderRadius.circular(14),
               child: Container(

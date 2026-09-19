@@ -5,10 +5,8 @@ class ApiConstants {
   // Simulator mode allows full 100% offline functionality matching the GitHub Pages demo
   static bool isSimulatorMode = false;
 
-  // Auto-detects Android emulator (10.0.2.2) vs Web/Desktop (127.0.0.1)
-  static String _baseUrl = (!kIsWeb && Platform.isAndroid)
-      ? "http://10.0.2.2:8000/api"
-      : "http://127.0.0.1:8000/api";
+  // Production backend deployed on Render
+  static String _baseUrl = "https://mediconnect-yt1e.onrender.com/api";
 
   static String get baseUrl => _baseUrl;
 
