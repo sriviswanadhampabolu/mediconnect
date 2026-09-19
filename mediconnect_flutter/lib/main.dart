@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'core/localization/app_localization.dart';
 import 'core/theme/app_theme.dart';
 import 'providers/auth_provider.dart';
 import 'providers/triage_provider.dart';
@@ -22,31 +23,36 @@ class MediConnectApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
+        ChangeNotifierProvider(create: (_) => AppLocalization()),
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => TriageProvider()),
         ChangeNotifierProvider(create: (_) => PharmacyProvider()),
         ChangeNotifierProvider(create: (_) => CartProvider()),
         ChangeNotifierProvider(create: (_) => ProfileProvider()),
       ],
-      child: MaterialApp(
-        title: 'MediConnect',
-        debugShowCheckedModeBanner: false,
-        theme: AppTheme.lightTheme,
-        home: Consumer<AuthProvider>(
-          builder: (context, auth, _) {
-            // First screen: asks for role & credentials
-            if (!auth.isLoggedIn) {
-              return const AuthScreen();
-            }
+      child: Consumer<AppLocalization>(
+        builder: (context, localization, _) {
+          return MaterialApp(
+            title: 'MediConnect',
+            debugShowCheckedModeBanner: false,
+            theme: AppTheme.lightTheme,
+            home: Consumer<AuthProvider>(
+              builder: (context, auth, _) {
+                // First screen: asks for role & credentials
+                if (!auth.isLoggedIn) {
+                  return const AuthScreen();
+                }
 
-            // Role-based navigation: Owner vs Customer
-            if (auth.isOwner) {
-              return const OwnerDashboardScreen();
-            }
+                // Role-based navigation: Owner vs Customer
+                if (auth.isOwner) {
+                  return const OwnerDashboardScreen();
+                }
 
-            return const HomeScreen();
-          },
-        ),
+                return const HomeScreen();
+              },
+            ),
+          );
+        },
       ),
     );
   }

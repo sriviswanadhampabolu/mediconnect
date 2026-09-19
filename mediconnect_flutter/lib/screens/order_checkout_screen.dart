@@ -19,13 +19,22 @@ class _OrderCheckoutScreenState extends State<OrderCheckoutScreen> {
   void _handlePlaceOrder(CartProvider cart) async {
     if (cart.items.isEmpty) return;
 
-    if (cart.exceedsPaymentLimit && !_bypassLimitConfirmation) {
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    final userLimit = auth.safeAutoPayBalance;
+
+    if (cart.checkExceedsLimit(userLimit) && !_bypassLimitConfirmation) {
       showDialog(
         context: context,
         builder: (ctx) => AlertDialog(
-          title: const Text('Payment Limit Authorization Required'),
+          title: const Row(
+            children: [
+              Text('🔒', style: TextStyle(fontSize: 22)),
+              SizedBox(width: 8),
+              Expanded(child: Text('Safe Auto-Pay Limit Exceeded', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold))),
+            ],
+          ),
           content: Text(
-            'The total amount (₹${cart.finalTotal.toStringAsFixed(2)}) exceeds your auto-pay security limit of ₹1,500.00.\n\nUnder MediConnect rules, two-step authorization is required to protect your funds.',
+            'The order total (₹${cart.finalTotal.toStringAsFixed(2)}) exceeds your configured Safe Auto-Pay Limit Guardrail (₹${userLimit.toStringAsFixed(2)}).\n\nUnder MediConnect safety rules, explicit manual authorization is required to approve this charge.',
           ),
           actions: [
             TextButton(
@@ -33,6 +42,7 @@ class _OrderCheckoutScreenState extends State<OrderCheckoutScreen> {
               child: const Text('Cancel'),
             ),
             ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primary, foregroundColor: Colors.white),
               onPressed: () {
                 Navigator.of(ctx).pop();
                 setState(() {
@@ -40,7 +50,7 @@ class _OrderCheckoutScreenState extends State<OrderCheckoutScreen> {
                 });
                 _executeOrder(cart, bypass: true);
               },
-              child: const Text('Authorize Charge'),
+              child: const Text('Authorize Charge ➔'),
             ),
           ],
         ),
@@ -59,11 +69,8 @@ class _OrderCheckoutScreenState extends State<OrderCheckoutScreen> {
     if (!mounted) return;
 
     if (response != null) {
-      if (auth.currentUser != null) {
-        final currentLimit = auth.currentUser!.paymentLimit;
-        final remaining = (currentLimit - response.totalAmount).clamp(0.0, double.infinity);
-        auth.updatePaymentLimit(remaining);
-      }
+      // Deduct order amount from Safe Auto-Pay Limit Guardrail
+      auth.deductAutoPayAmount(response.totalAmount);
 
       showDialog(
         context: context,

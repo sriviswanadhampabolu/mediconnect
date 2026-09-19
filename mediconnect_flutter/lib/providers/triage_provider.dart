@@ -63,6 +63,23 @@ class TriageProvider extends ChangeNotifier {
     }
   }
 
+  Future<void> submitTriage({
+    required String message,
+    String? voiceTranscript,
+    double latitude = 28.6139,
+    double longitude = 77.2090,
+    String? userId,
+    String? village,
+    String? address,
+  }) => submitSymptom(
+    query: message,
+    voiceTranscript: voiceTranscript,
+    latitude: latitude,
+    longitude: longitude,
+    village: village,
+    address: address,
+  );
+
   void resetTriage() {
     _currentTriage = null;
     _errorMessage = null;

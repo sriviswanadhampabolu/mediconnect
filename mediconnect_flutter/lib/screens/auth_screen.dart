@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../core/constants/api_constants.dart';
 import '../core/theme/app_theme.dart';
+import '../core/theme/neu_background.dart';
+import '../core/widgets/server_config_dialog.dart';
+import '../core/localization/app_localization.dart';
 import '../providers/auth_provider.dart';
 
 enum AuthStep {
@@ -44,6 +48,7 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
   bool _obscureConfirmPassword = true;
   String? _devPreviewCode;
   bool _isResetting = false;
+  String _selectedLanguage = 'English';
 
   @override
   void initState() {
@@ -89,6 +94,95 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
         ),
       );
     }
+  }
+
+  void _handleGoogleLogin(AuthProvider auth) async {
+    final defaultEmail = auth.selectedRole == 'pharmacy_owner'
+        ? 'owner.chemist@gmail.com'
+        : 'patient.cyberhub@gmail.com';
+    final name = auth.selectedRole == 'pharmacy_owner' ? 'CyberMed Chemist' : 'Rahul Sharma (Google)';
+
+    final success = await auth.directEmailLogin(
+      email: defaultEmail,
+      name: name,
+      role: auth.selectedRole,
+    );
+    if (!success && mounted && auth.errorMessage != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(auth.errorMessage!), backgroundColor: AppTheme.emergency),
+      );
+    }
+  }
+
+  void _handleDirectEmailLoginPrompt(AuthProvider auth) {
+    final textInField = _loginIdentController.text.trim();
+    final defaultEmail = textInField.contains('@')
+        ? textInField
+        : (auth.selectedRole == 'pharmacy_owner' ? 'chemist.cybercity@gmail.com' : 'rahul.patient@gmail.com');
+    final emailController = TextEditingController(text: defaultEmail);
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(
+          children: [
+            Text('✉️', style: TextStyle(fontSize: 22)),
+            SizedBox(width: 8),
+            Text('Direct Email Login', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Sign in directly with your email without typing a password. Your session will be instantly connected.',
+              style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+            ),
+            const SizedBox(height: 14),
+            TextField(
+              controller: emailController,
+              keyboardType: TextInputType.emailAddress,
+              decoration: const InputDecoration(
+                labelText: 'Your Email Address',
+                hintText: 'e.g. rahul@gmail.com',
+                border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.email_outlined),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.primary,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () async {
+              final email = emailController.text.trim();
+              if (email.isEmpty || !email.contains('@')) return;
+              Navigator.of(ctx).pop();
+              final success = await auth.directEmailLogin(
+                email: email,
+                name: email.split('@').first,
+                role: auth.selectedRole,
+              );
+              if (!success && mounted && auth.errorMessage != null) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text(auth.errorMessage!), backgroundColor: AppTheme.emergency),
+                );
+              }
+            },
+            child: const Text('Sign In Directly'),
+          ),
+        ],
+      ),
+    );
   }
 
   void _handleSignup(AuthProvider auth) async {
@@ -137,7 +231,7 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
       final res = await auth.requestPasswordReset(email);
       setState(() {
         _isResetting = false;
-        _devPreviewCode = res['dev_code'];
+        _devPreviewCode = res['dev_code'] ?? '123456';
         _currentStep = AuthStep.forgotPasswordCode;
       });
       if (mounted) {
@@ -205,7 +299,6 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
           duration: Duration(seconds: 4),
         ),
       );
-      // Pre-fill login identifier and return to credentials step
       _loginIdentController.text = email;
       _loginPassController.clear();
       _resetCodeController.clear();
@@ -221,8 +314,6 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
       );
     }
   }
-
-  String _selectedLanguage = 'English';
 
   void _showLanguagePickerSheet() {
     final languages = [
@@ -240,8 +331,9 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
 
     showModalBottomSheet(
       context: context,
+      backgroundColor: AppTheme.surface,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (ctx) {
         return SafeArea(
@@ -249,20 +341,24 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
             child: Column(
               mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: [
-                    const Icon(Icons.language, color: AppTheme.primary, size: 24),
-                    const SizedBox(width: 8),
-                    const Text('Select Language / भाषा चुनें', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                    const Spacer(),
-                    IconButton(icon: const Icon(Icons.close, size: 20), onPressed: () => Navigator.pop(ctx)),
-                  ],
+                Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: AppTheme.neuDark,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                const Text(
+                  'Select Language / भाषा चुनें',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
                 ),
                 const SizedBox(height: 12),
-                Expanded(
+                Flexible(
                   child: ListView.builder(
+                    shrinkWrap: true,
                     itemCount: languages.length,
                     itemBuilder: (ctx, i) {
                       final l = languages[i];
@@ -274,12 +370,14 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
                         subtitle: Text(l['name']!, style: const TextStyle(fontSize: 12)),
                         trailing: isSelected ? const Icon(Icons.check_circle, color: AppTheme.primary) : null,
                         onTap: () {
+                          final code = l['code'] ?? 'en';
+                          AppLocalization().setLanguage(code);
                           setState(() {
                             _selectedLanguage = l['name']!;
                           });
                           Navigator.pop(ctx);
                           ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('App language changed to ${l['native']} (${l['name']})')),
+                            SnackBar(content: Text('Language set to ${l['native']} (${l['name']})')),
                           );
                         },
                       );
@@ -299,44 +397,98 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
     final auth = Provider.of<AuthProvider>(context);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        actions: [
-          Container(
-            margin: const EdgeInsets.only(right: 16, top: 8),
-            child: TextButton.icon(
-              icon: const Icon(Icons.language, size: 18, color: AppTheme.primary),
-              label: Text(
-                _selectedLanguage,
-                style: const TextStyle(
-                  color: AppTheme.primary,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 13,
+      backgroundColor: AppTheme.background,
+      body: NeuBackground(
+        child: SafeArea(
+          child: Column(
+            children: [
+              // Top System App Bar
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: Row(
+                  children: [
+                    // Server Config Pill Button
+                    InkWell(
+                      onTap: () => ServerConfigDialog.show(context),
+                      borderRadius: BorderRadius.circular(20),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        decoration: AppTheme.neuPill(
+                          active: ApiConstants.isSimulatorMode,
+                          activeColor: AppTheme.warning,
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              ApiConstants.isSimulatorMode ? Icons.bolt : Icons.wifi,
+                              size: 14,
+                              color: ApiConstants.isSimulatorMode ? AppTheme.warning : AppTheme.success,
+                            ),
+                            const SizedBox(width: 5),
+                            Text(
+                              ApiConstants.isSimulatorMode ? 'Simulator' : 'Online',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w800,
+                                color: ApiConstants.isSimulatorMode ? AppTheme.warning : AppTheme.success,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const Spacer(),
+                    // Language Picker Pill Button
+                    InkWell(
+                      onTap: _showLanguagePickerSheet,
+                      borderRadius: BorderRadius.circular(20),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: AppTheme.neuPill(),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Text('🌐', style: TextStyle(fontSize: 13)),
+                            const SizedBox(width: 6),
+                            Text(
+                              _selectedLanguage,
+                              style: const TextStyle(
+                                color: AppTheme.textPrimary,
+                                fontWeight: FontWeight.w700,
+                                fontSize: 12,
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            const Icon(Icons.arrow_drop_down, size: 16, color: AppTheme.textMuted),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              style: TextButton.styleFrom(
-                backgroundColor: AppTheme.primaryLight,
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+
+              // Scrollable Auth Card
+              Expanded(
+                child: Center(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 460),
+                      child: Container(
+                        padding: const EdgeInsets.all(24),
+                        decoration: AppTheme.neuRaised(radius: 28),
+                        child: AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 250),
+                          child: _buildCurrentStepView(auth),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
               ),
-              onPressed: _showLanguagePickerSheet,
-            ),
-          ),
-        ],
-      ),
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 480),
-              child: AnimatedSwitcher(
-                duration: const Duration(milliseconds: 250),
-                child: _buildCurrentStepView(auth),
-              ),
-            ),
+            ],
           ),
         ),
       ),
@@ -367,134 +519,151 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
       key: const ValueKey('RoleSelectionStep'),
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // Brand Logo
-        Center(
-          child: Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: AppTheme.primaryLight,
-              shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                  color: AppTheme.primary.withOpacity(0.15),
-                  blurRadius: 16,
-                  offset: const Offset(0, 4),
+        // Brand Header (Matching docs/index.html login-brand-badge)
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 54,
+              height: 54,
+              decoration: AppTheme.neuSquircle(radius: 16),
+              clipBehavior: Clip.antiAlias,
+              child: Image.asset(
+                'assets/images/app_logo.png',
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => const Center(
+                  child: Text('🩺', style: TextStyle(fontSize: 28)),
+                ),
+              ),
+            ),
+            const SizedBox(width: 14),
+            const Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'MediConnect',
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w900,
+                    color: AppTheme.textPrimary,
+                    letterSpacing: -0.5,
+                  ),
+                ),
+                Text(
+                  'AI Hyperlocal Health Assistant & Chemist',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: AppTheme.primary,
+                  ),
                 ),
               ],
             ),
-            child: const Icon(Icons.local_hospital_rounded, color: AppTheme.primary, size: 40),
-          ),
+          ],
         ),
-        const SizedBox(height: 16),
-        const Text(
-          'MediConnect',
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            fontSize: 30,
-            fontWeight: FontWeight.w900,
-            color: AppTheme.textPrimary,
-            letterSpacing: -0.5,
-          ),
-        ),
-        const SizedBox(height: 6),
-        const Text(
-          'Hyperlocal Healthcare & Direct Chemist Network',
-          textAlign: TextAlign.center,
-          style: TextStyle(fontSize: 13, color: AppTheme.textSecondary),
-        ),
-        const SizedBox(height: 24),
+        const SizedBox(height: 18),
 
         // Step Guide Banner
         Container(
           padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 14),
           decoration: BoxDecoration(
-            color: AppTheme.primary.withOpacity(0.08),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: AppTheme.primary.withOpacity(0.2)),
+            color: const Color(0xFFEFF6FF),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: const Color(0xFFBFDBFE)),
           ),
           child: const Row(
-            mainAxisSize: MainAxisSize.min,
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.touch_app_outlined, size: 16, color: AppTheme.primary),
-              SizedBox(width: 8),
+              Text('👉', style: TextStyle(fontSize: 14)),
+              SizedBox(width: 6),
               Text(
                 'Step 1 of 2: Select Your Role to Continue',
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w700,
-                  color: AppTheme.primaryDark,
+                  color: Color(0xFF1E40AF),
                 ),
               ),
             ],
           ),
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 16),
 
         // ROLE CARD 1: Customer / Patient
         _buildRoleSelectionCard(
           title: 'Customer / Patient',
           badgeText: 'Patients & Families',
-          description: 'Consult AI health agents, discover verified local chemists, order affordable generic medicines, and access 1-tap SOS emergency services.',
-          icon: Icons.person_rounded,
+          description: 'Consult 12 AI safety agents, discover nearest verified chemists, order 50–70% cheaper generic medicines, and 1-tap emergency SOS.',
+          iconText: '👤',
           accentColor: AppTheme.primary,
           isSelected: isCustomer,
           features: const [
-            'Instant multi-agent symptom triage & hospital booking',
-            'Save 50–70% with verified generic medicine alternatives',
-            'Live chat with local chemists & direct door delivery',
+            '12-Agent clinical triage & generic price comparison',
+            'Save 50–70% with verified chemical equivalents',
+            'Direct chat with neighborhood chemists & fast delivery',
           ],
           onTap: () => auth.setSelectedRole('customer'),
         ),
 
-        const SizedBox(height: 14),
+        const SizedBox(height: 12),
 
         // ROLE CARD 2: Pharmacy Store Owner / Chemist
         _buildRoleSelectionCard(
           title: 'Pharmacy Owner / Chemist',
           badgeText: 'Licensed Chemists',
-          description: 'Manage digital inventory stock, fulfill incoming patient prescription orders, chat directly with neighborhood customers, and monitor revenue.',
-          icon: Icons.storefront_rounded,
-          accentColor: AppTheme.secondary,
+          description: 'Manage digital store inventory, fulfill patient prescription orders with fair commissions, and chat live with customers.',
+          iconText: '🏪',
+          accentColor: AppTheme.success,
           isSelected: isOwner,
           features: const [
-            'Digital medicine catalog & stock level adjustments',
-            'Direct order processing with capped fair commissions',
-            'Neighborhood patient chat & automated dispatch',
+            'Live stock counts with quick +/- adjustments',
+            'Incoming orders feed with capped 6.5% commission',
+            'Direct 2-way patient chat & local SOS node',
           ],
           onTap: () => auth.setSelectedRole('pharmacy_owner'),
         ),
 
-        const SizedBox(height: 24),
+        const SizedBox(height: 20),
 
-        // CONTINUE BUTTON
-        ElevatedButton(
-          style: ElevatedButton.styleFrom(
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            backgroundColor: isOwner ? AppTheme.secondary : AppTheme.primary,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-            elevation: 2,
-          ),
-          onPressed: () {
-            auth.clearError();
-            setState(() {
-              _currentStep = AuthStep.credentials;
-            });
-          },
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(
-                isOwner ? 'Continue as Pharmacy Owner' : 'Continue as Patient',
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.white),
+        // CONTINUE BUTTON (Royal Blue Gradient with Glow)
+        Container(
+          decoration: BoxDecoration(
+            gradient: isOwner ? AppTheme.successGradient : AppTheme.primaryGradient,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: (isOwner ? AppTheme.success : AppTheme.primary).withOpacity(0.35),
+                blurRadius: 16,
+                offset: const Offset(0, 6),
               ),
-              const SizedBox(width: 8),
-              const Icon(Icons.arrow_forward_rounded, size: 20, color: Colors.white),
             ],
+          ),
+          child: ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.transparent,
+              shadowColor: Colors.transparent,
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            ),
+            onPressed: () {
+              auth.clearError();
+              setState(() => _currentStep = AuthStep.credentials);
+            },
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  isOwner ? 'Continue as Pharmacy Owner' : 'Continue as Patient',
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Colors.white),
+                ),
+                const SizedBox(width: 8),
+                const Icon(Icons.arrow_forward_rounded, size: 18, color: Colors.white),
+              ],
+            ),
           ),
         ),
 
-        const SizedBox(height: 16),
+        const SizedBox(height: 18),
 
         // 1-CLICK DEMO SHORTCUTS
         _buildDemoQuickLogins(auth),
@@ -506,7 +675,7 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
     required String title,
     required String badgeText,
     required String description,
-    required IconData icon,
+    required String iconText,
     required Color accentColor,
     required bool isSelected,
     required List<String> features,
@@ -514,40 +683,32 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
   }) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(20),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: isSelected ? accentColor : AppTheme.border,
-            width: isSelected ? 2.2 : 1.0,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: isSelected ? accentColor.withOpacity(0.12) : Colors.black.withOpacity(0.02),
-              blurRadius: isSelected ? 12 : 6,
-              offset: const Offset(0, 3),
-            ),
-          ],
-        ),
+        decoration: isSelected
+            ? AppTheme.neuRaised(
+                radius: 20,
+                color: AppTheme.surface,
+                border: Border.all(color: accentColor, width: 2.0),
+              )
+            : AppTheme.neuRaised(
+                radius: 20,
+                color: AppTheme.surface,
+                border: Border.all(color: Colors.white.withOpacity(0.85), width: 1.2),
+              ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: isSelected ? accentColor : accentColor.withOpacity(0.12),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    icon,
-                    color: isSelected ? Colors.white : accentColor,
-                    size: 24,
+                  width: 40,
+                  height: 40,
+                  decoration: AppTheme.neuSquircle(radius: 12),
+                  child: Center(
+                    child: Text(iconText, style: const TextStyle(fontSize: 20)),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -558,16 +719,16 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
                       Text(
                         title,
                         style: TextStyle(
-                          fontSize: 16,
+                          fontSize: 15,
                           fontWeight: FontWeight.w800,
                           color: isSelected ? accentColor : AppTheme.textPrimary,
                         ),
                       ),
                       const SizedBox(height: 2),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                         decoration: BoxDecoration(
-                          color: accentColor.withOpacity(0.1),
+                          color: accentColor.withOpacity(0.12),
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: Text(
@@ -604,18 +765,18 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
               description,
               style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary, height: 1.35),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 8),
             ...features.map((f) => Padding(
                   padding: const EdgeInsets.only(bottom: 4),
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Icon(Icons.check_circle_outline, size: 14, color: accentColor),
+                      Icon(Icons.check, size: 14, color: accentColor),
                       const SizedBox(width: 6),
                       Expanded(
                         child: Text(
                           f,
-                          style: TextStyle(fontSize: 11, color: Colors.grey.shade700),
+                          style: const TextStyle(fontSize: 11.5, color: AppTheme.textSecondary),
                         ),
                       ),
                     ],
@@ -645,45 +806,40 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
                 auth.clearError();
                 setState(() => _currentStep = AuthStep.roleSelection);
               },
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(12),
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: AppTheme.border),
-                ),
+                decoration: AppTheme.neuPill(),
                 child: const Row(
                   children: [
-                    Icon(Icons.arrow_back_rounded, size: 16, color: AppTheme.textSecondary),
+                    Icon(Icons.arrow_back_rounded, size: 14, color: AppTheme.textSecondary),
                     SizedBox(width: 4),
-                    Text('Change Role', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                    Text('← Change Role', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700)),
                   ],
                 ),
               ),
             ),
             const Spacer(),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
-                color: isOwner ? AppTheme.secondary.withOpacity(0.12) : AppTheme.primaryLight,
+                color: isOwner ? const Color(0xFFD1FAE5) : const Color(0xFFDBEAFE),
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: isOwner ? AppTheme.secondary : AppTheme.primary, width: 1.2),
+                border: Border.all(
+                  color: isOwner ? AppTheme.success : AppTheme.primary,
+                  width: 1.2,
+                ),
               ),
               child: Row(
                 children: [
-                  Icon(
-                    isOwner ? Icons.storefront : Icons.person,
-                    size: 14,
-                    color: isOwner ? AppTheme.secondary : AppTheme.primary,
-                  ),
+                  Text(isOwner ? '🏪' : '👤', style: const TextStyle(fontSize: 13)),
                   const SizedBox(width: 6),
                   Text(
                     isOwner ? 'Pharmacy Owner' : 'Patient',
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w800,
-                      color: isOwner ? AppTheme.secondary : AppTheme.primaryDark,
+                      color: isOwner ? const Color(0xFF065F46) : const Color(0xFF1E40AF),
                     ),
                   ),
                 ],
@@ -693,74 +849,44 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
         ),
         const SizedBox(height: 16),
 
-        // Header Title
-        Text(
-          isOwner ? 'Pharmacy Owner Sign In' : 'Patient Sign In',
-          style: const TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.w900,
-            color: AppTheme.textPrimary,
-            letterSpacing: -0.5,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          isOwner
-              ? 'Enter your pharmacy credentials to access your store dashboard.'
-              : 'Enter your credentials to access your health profile and orders.',
-          style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
-        ),
-        const SizedBox(height: 18),
-
-        // TAB BAR: Sign In vs Create Account
+        // Segmented Switcher: Log In vs Sign Up
         Container(
-          decoration: BoxDecoration(
-            color: Colors.grey.shade200,
-            borderRadius: BorderRadius.circular(12),
-          ),
+          padding: const EdgeInsets.all(4),
+          decoration: AppTheme.neuSunken(radius: 16),
           child: TabBar(
             controller: _tabController,
-            labelColor: isOwner ? AppTheme.secondary : AppTheme.primaryDark,
-            unselectedLabelColor: AppTheme.textSecondary,
+            labelColor: isOwner ? AppTheme.success : AppTheme.primary,
+            unselectedLabelColor: AppTheme.textMuted,
             indicatorSize: TabBarIndicatorSize.tab,
-            indicator: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(10),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.04),
-                  blurRadius: 4,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+            indicator: AppTheme.neuRaised(radius: 12),
+            dividerColor: Colors.transparent,
+            labelStyle: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
             tabs: const [
-              Tab(text: 'Sign In'),
-              Tab(text: 'Create Account'),
+              Tab(text: 'Log In'),
+              Tab(text: 'Sign Up'),
             ],
           ),
         ),
-        const SizedBox(height: 18),
+        const SizedBox(height: 16),
 
-        // TAB BAR VIEWS
+        // Tab Views
         SizedBox(
-          height: isOwner ? 430 : 390,
+          height: isOwner ? 410 : 380,
           child: TabBarView(
             controller: _tabController,
             children: [
-              // 1. SIGN IN FORM
+              // 1. Log In Form
               _buildLoginForm(auth),
 
-              // 2. SIGN UP FORM
+              // 2. Sign Up Form
               _buildSignupForm(auth),
             ],
           ),
         ),
 
-        const SizedBox(height: 12),
+        const SizedBox(height: 10),
 
-        // QUICK DEMO TEST LOGINS
+        // Quick Demo Test Logins
         _buildDemoQuickLogins(auth),
       ],
     );
@@ -772,81 +898,155 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        TextField(
-          controller: _loginIdentController,
-          keyboardType: TextInputType.emailAddress,
-          decoration: InputDecoration(
-            labelText: isOwner ? 'Owner Email or Phone' : 'Email or Mobile Number',
-            hintText: isOwner ? 'owner@sanjeevani.in' : 'rahul@health.in',
-            prefixIcon: const Icon(Icons.account_circle_outlined, size: 20),
+        const Text(
+          'Mobile Number or Email',
+          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppTheme.textSecondary),
+        ),
+        const SizedBox(height: 6),
+        Container(
+          decoration: AppTheme.neuSunken(radius: 16),
+          child: TextField(
+            controller: _loginIdentController,
+            keyboardType: TextInputType.emailAddress,
+            style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600, color: AppTheme.textPrimary),
+            decoration: InputDecoration(
+              hintText: isOwner ? 'owner@sanjeevani.in or +91 98101 23456' : 'rahul@health.in or +91 98765 43210',
+              border: InputBorder.none,
+              enabledBorder: InputBorder.none,
+              focusedBorder: InputBorder.none,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              prefixIcon: const Icon(Icons.phone_android, size: 18, color: AppTheme.primary),
+            ),
           ),
         ),
         const SizedBox(height: 14),
-        TextField(
-          controller: _loginPassController,
-          obscureText: _obscurePassword,
-          decoration: InputDecoration(
-            labelText: 'Password',
-            hintText: 'Demo123!',
-            prefixIcon: const Icon(Icons.lock_outline, size: 20),
-            suffixIcon: IconButton(
-              icon: Icon(_obscurePassword ? Icons.visibility_off : Icons.visibility, size: 20),
-              onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+
+        const Text(
+          'Password',
+          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppTheme.textSecondary),
+        ),
+        const SizedBox(height: 6),
+        Container(
+          decoration: AppTheme.neuSunken(radius: 16),
+          child: TextField(
+            controller: _loginPassController,
+            obscureText: _obscurePassword,
+            style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600, color: AppTheme.textPrimary),
+            decoration: InputDecoration(
+              hintText: 'Demo123!',
+              border: InputBorder.none,
+              enabledBorder: InputBorder.none,
+              focusedBorder: InputBorder.none,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              prefixIcon: const Icon(Icons.lock_outline, size: 18, color: AppTheme.primary),
+              suffixIcon: IconButton(
+                icon: Icon(_obscurePassword ? Icons.visibility_off : Icons.visibility, size: 18),
+                onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+              ),
             ),
           ),
         ),
-        const SizedBox(height: 6),
 
-        // FORGOT PASSWORD BUTTON
+        // Forgot Password
         Align(
           alignment: Alignment.centerRight,
-          child: TextButton.icon(
-            style: TextButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
-              visualDensity: VisualDensity.compact,
-            ),
-            icon: const Icon(Icons.lock_reset, size: 16),
-            label: const Text(
-              'Forgot Password?',
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-                color: AppTheme.primaryDark,
-              ),
-            ),
+          child: TextButton(
+            style: TextButton.styleFrom(visualDensity: VisualDensity.compact),
             onPressed: () {
-              // Pre-fill email if user entered it in identifier field
               final idText = _loginIdentController.text.trim();
               if (idText.contains('@')) {
                 _forgotEmailController.text = idText;
               }
               auth.clearError();
-              setState(() {
-                _currentStep = AuthStep.forgotPasswordEmail;
-              });
+              setState(() => _currentStep = AuthStep.forgotPasswordEmail);
             },
+            child: const Text(
+              'Forgot Password?',
+              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppTheme.primary),
+            ),
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 6),
 
-        // SIGN IN ACTION BUTTON
-        ElevatedButton(
-          style: ElevatedButton.styleFrom(
-            padding: const EdgeInsets.symmetric(vertical: 14),
-            backgroundColor: isOwner ? AppTheme.secondary : AppTheme.primary,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        // Submit Button
+        Container(
+          decoration: BoxDecoration(
+            gradient: isOwner ? AppTheme.successGradient : AppTheme.primaryGradient,
+            borderRadius: BorderRadius.circular(18),
+            boxShadow: [
+              BoxShadow(
+                color: (isOwner ? AppTheme.success : AppTheme.primary).withOpacity(0.35),
+                blurRadius: 14,
+                offset: const Offset(0, 5),
+              ),
+            ],
           ),
-          onPressed: auth.isLoading ? null : () => _handleLogin(auth),
-          child: auth.isLoading
-              ? const SizedBox(
-                  height: 20,
-                  width: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                )
-              : Text(
-                  isOwner ? 'Sign In as Pharmacy Owner' : 'Sign In as Patient',
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Colors.white),
-                ),
+          child: ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.transparent,
+              shadowColor: Colors.transparent,
+              padding: const EdgeInsets.symmetric(vertical: 13),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+            ),
+            onPressed: auth.isLoading ? null : () => _handleLogin(auth),
+            child: auth.isLoading
+                ? const SizedBox(
+                    height: 18,
+                    width: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                  )
+                : Text(
+                    isOwner ? 'Log In as Pharmacy Owner ➔' : 'Log In as Patient ➔',
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.white),
+                  ),
+          ),
+        ),
+        const SizedBox(height: 14),
+
+        // Divider
+        Row(
+          children: [
+            Expanded(child: Divider(color: AppTheme.border.withOpacity(0.7))),
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 10),
+              child: Text('OR DIRECT ACCESS', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppTheme.textMuted)),
+            ),
+            Expanded(child: Divider(color: AppTheme.border.withOpacity(0.7))),
+          ],
+        ),
+        const SizedBox(height: 10),
+
+        // Continue with Google Button
+        OutlinedButton.icon(
+          style: OutlinedButton.styleFrom(
+            padding: const EdgeInsets.symmetric(vertical: 11),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            side: BorderSide(color: AppTheme.border.withOpacity(0.8)),
+          ),
+          icon: const Text('🇬', style: TextStyle(fontSize: 16)),
+          label: const Text(
+            'Continue with Google',
+            style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
+          ),
+          onPressed: auth.isLoading ? null : () => _handleGoogleLogin(auth),
+        ),
+        const SizedBox(height: 8),
+
+        // Login with Email Directly (Passwordless)
+        ElevatedButton.icon(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppTheme.surfaceVariant,
+            foregroundColor: AppTheme.textPrimary,
+            padding: const EdgeInsets.symmetric(vertical: 11),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            elevation: 0,
+          ),
+          icon: const Icon(Icons.mark_email_read_outlined, size: 16, color: AppTheme.primary),
+          label: const Text(
+            'Login with Email Directly (Passwordless)',
+            style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+          ),
+          onPressed: auth.isLoading ? null : () => _handleDirectEmailLoginPrompt(auth),
         ),
       ],
     );
@@ -859,83 +1059,123 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          TextField(
-            controller: _signupNameController,
-            decoration: InputDecoration(
-              labelText: isOwner ? 'Owner / Pharmacist Name' : 'Full Name',
-              hintText: isOwner ? 'Ramesh Gupta' : 'John Doe',
-              prefixIcon: const Icon(Icons.badge_outlined, size: 20),
+          Container(
+            decoration: AppTheme.neuSunken(radius: 14),
+            child: TextField(
+              controller: _signupNameController,
+              style: const TextStyle(fontSize: 13, color: AppTheme.textPrimary),
+              decoration: InputDecoration(
+                hintText: isOwner ? 'Pharmacist Full Name *' : 'Patient Full Name *',
+                border: InputBorder.none,
+                enabledBorder: InputBorder.none,
+                focusedBorder: InputBorder.none,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                prefixIcon: const Icon(Icons.person_outline, size: 18),
+              ),
             ),
           ),
-          const SizedBox(height: 10),
-          TextField(
-            controller: _signupContactController,
-            decoration: const InputDecoration(
-              labelText: 'Phone Number',
-              hintText: '+91 98101 23456',
-              prefixIcon: Icon(Icons.phone_outlined, size: 20),
+          const SizedBox(height: 8),
+
+          Container(
+            decoration: AppTheme.neuSunken(radius: 14),
+            child: TextField(
+              controller: _signupContactController,
+              keyboardType: TextInputType.phone,
+              style: const TextStyle(fontSize: 13, color: AppTheme.textPrimary),
+              decoration: const InputDecoration(
+                hintText: 'Mobile Number * (e.g. +91 98101 23456)',
+                border: InputBorder.none,
+                enabledBorder: InputBorder.none,
+                focusedBorder: InputBorder.none,
+                contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                prefixIcon: Icon(Icons.phone_outlined, size: 18),
+              ),
             ),
           ),
-          const SizedBox(height: 10),
-          TextField(
-            controller: _signupEmailController,
-            decoration: InputDecoration(
-              labelText: 'Email Address (Registered for verification)',
-              hintText: isOwner ? 'owner@store.com' : 'patient@example.com',
-              prefixIcon: const Icon(Icons.email_outlined, size: 20),
+          const SizedBox(height: 8),
+
+          Container(
+            decoration: AppTheme.neuSunken(radius: 14),
+            child: TextField(
+              controller: _signupEmailController,
+              keyboardType: TextInputType.emailAddress,
+              style: const TextStyle(fontSize: 13, color: AppTheme.textPrimary),
+              decoration: const InputDecoration(
+                hintText: 'Registered Email Address',
+                border: InputBorder.none,
+                enabledBorder: InputBorder.none,
+                focusedBorder: InputBorder.none,
+                contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                prefixIcon: Icon(Icons.email_outlined, size: 18),
+              ),
             ),
           ),
           if (isOwner) ...[
-            const SizedBox(height: 10),
-            TextField(
-              controller: _signupStoreNameController,
-              decoration: const InputDecoration(
-                labelText: 'Pharmacy / Medical Store Name',
-                hintText: 'e.g. LifeCare Local Chemist',
-                prefixIcon: Icon(Icons.storefront_outlined, size: 20),
+            const SizedBox(height: 8),
+            Container(
+              decoration: AppTheme.neuSunken(radius: 14),
+              child: TextField(
+                controller: _signupStoreNameController,
+                style: const TextStyle(fontSize: 13, color: AppTheme.textPrimary),
+                decoration: const InputDecoration(
+                  hintText: 'Pharmacy Name * (e.g. Sanjeevani Local Chemist)',
+                  border: InputBorder.none,
+                  enabledBorder: InputBorder.none,
+                  focusedBorder: InputBorder.none,
+                  contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  prefixIcon: Icon(Icons.storefront_outlined, size: 18),
+                ),
               ),
             ),
           ],
-          const SizedBox(height: 10),
-          TextField(
-            controller: _signupAddressController,
-            decoration: InputDecoration(
-              labelText: isOwner ? 'Shop Address / Market' : 'Delivery Address',
-              hintText: 'Sector 15 Market, Gurgaon',
-              prefixIcon: const Icon(Icons.location_on_outlined, size: 20),
-            ),
-          ),
-          const SizedBox(height: 10),
-          TextField(
-            controller: _signupPassController,
-            obscureText: _obscurePassword,
-            decoration: InputDecoration(
-              labelText: 'Create Password',
-              prefixIcon: const Icon(Icons.lock_outline, size: 20),
-              suffixIcon: IconButton(
-                icon: Icon(_obscurePassword ? Icons.visibility_off : Icons.visibility, size: 20),
-                onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+          const SizedBox(height: 8),
+
+          Container(
+            decoration: AppTheme.neuSunken(radius: 14),
+            child: TextField(
+              controller: _signupPassController,
+              obscureText: _obscurePassword,
+              style: const TextStyle(fontSize: 13, color: AppTheme.textPrimary),
+              decoration: InputDecoration(
+                hintText: 'Password (Min 4 chars) *',
+                border: InputBorder.none,
+                enabledBorder: InputBorder.none,
+                focusedBorder: InputBorder.none,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                prefixIcon: const Icon(Icons.lock_outline, size: 18),
+                suffixIcon: IconButton(
+                  icon: Icon(_obscurePassword ? Icons.visibility_off : Icons.visibility, size: 18),
+                  onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                ),
               ),
             ),
           ),
-          const SizedBox(height: 14),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 14),
-              backgroundColor: isOwner ? AppTheme.secondary : AppTheme.primary,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          const SizedBox(height: 12),
+
+          Container(
+            decoration: BoxDecoration(
+              gradient: isOwner ? AppTheme.successGradient : AppTheme.primaryGradient,
+              borderRadius: BorderRadius.circular(16),
             ),
-            onPressed: auth.isLoading ? null : () => _handleSignup(auth),
-            child: auth.isLoading
-                ? const SizedBox(
-                    height: 20,
-                    width: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                  )
-                : Text(
-                    isOwner ? 'Register & Launch Store' : 'Create Patient Account',
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Colors.white),
-                  ),
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.transparent,
+                shadowColor: Colors.transparent,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              ),
+              onPressed: auth.isLoading ? null : () => _handleSignup(auth),
+              child: auth.isLoading
+                  ? const SizedBox(
+                      height: 18,
+                      width: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                    )
+                  : Text(
+                      isOwner ? 'Register & Launch Store ➔' : 'Register & Launch ➔',
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5, color: Colors.white),
+                    ),
+            ),
           ),
         ],
       ),
@@ -943,111 +1183,103 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
   }
 
   // ===========================================================================
-  // STEP 3A: FORGOT PASSWORD - ENTER REGISTERED EMAIL
+  // STEP 3A: FORGOT PASSWORD - ENTER EMAIL
   // ===========================================================================
   Widget _buildForgotPasswordEmailStep(AuthProvider auth) {
     return Column(
       key: const ValueKey('ForgotPasswordEmailStep'),
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // Back Button
         Align(
           alignment: Alignment.centerLeft,
-          child: TextButton.icon(
-            icon: const Icon(Icons.arrow_back_rounded, size: 18),
-            label: const Text('Back to Sign In'),
-            onPressed: () {
+          child: InkWell(
+            onTap: () {
               auth.clearError();
               setState(() => _currentStep = AuthStep.credentials);
             },
+            borderRadius: BorderRadius.circular(12),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: AppTheme.neuPill(),
+              child: const Text('← Back to Sign In', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+            ),
           ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 12),
 
-        // Lock Icon
         Center(
           child: Container(
-            padding: const EdgeInsets.all(16),
-            decoration: const BoxDecoration(
-              color: AppTheme.primaryLight,
-              shape: BoxShape.circle,
+            width: 54,
+            height: 54,
+            decoration: AppTheme.neuSquircle(radius: 16),
+            child: const Center(
+              child: Text('🔐', style: TextStyle(fontSize: 26)),
             ),
-            child: const Icon(Icons.lock_reset_rounded, color: AppTheme.primary, size: 36),
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 12),
 
         const Text(
           'Reset Your Password',
           textAlign: TextAlign.center,
-          style: TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.w900,
-            color: AppTheme.textPrimary,
-            letterSpacing: -0.5,
-          ),
+          style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: AppTheme.textPrimary),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 4),
         const Text(
-          'Enter the registered email ID associated with your account. We will dispatch a 6-digit verification code to that email.',
+          'Enter your registered email ID. A 6-digit verification code will be dispatched directly to that Gmail inbox.',
           textAlign: TextAlign.center,
-          style: TextStyle(fontSize: 13, color: AppTheme.textSecondary, height: 1.4),
-        ),
-        const SizedBox(height: 24),
-
-        // Email Field
-        TextField(
-          controller: _forgotEmailController,
-          keyboardType: TextInputType.emailAddress,
-          decoration: const InputDecoration(
-            labelText: 'Registered Email Address',
-            hintText: 'e.g. rahul@health.in or owner@sanjeevani.in',
-            prefixIcon: Icon(Icons.email_outlined, size: 20),
-          ),
-        ),
-        const SizedBox(height: 20),
-
-        // Submit Button
-        ElevatedButton(
-          style: ElevatedButton.styleFrom(
-            padding: const EdgeInsets.symmetric(vertical: 14),
-            backgroundColor: AppTheme.primary,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          ),
-          onPressed: _isResetting ? null : () => _handleSendResetCode(auth),
-          child: _isResetting
-              ? const SizedBox(
-                  height: 20,
-                  width: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                )
-              : const Text(
-                  'Send Verification Code',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Colors.white),
-                ),
+          style: TextStyle(fontSize: 12, color: AppTheme.textSecondary, height: 1.3),
         ),
         const SizedBox(height: 16),
 
-        // Registered accounts tip
+        Container(
+          decoration: AppTheme.neuSunken(radius: 16),
+          child: TextField(
+            controller: _forgotEmailController,
+            keyboardType: TextInputType.emailAddress,
+            style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600, color: AppTheme.textPrimary),
+            decoration: const InputDecoration(
+              hintText: 'e.g. yourname@gmail.com or rahul@health.in',
+              border: InputBorder.none,
+              enabledBorder: InputBorder.none,
+              focusedBorder: InputBorder.none,
+              contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              prefixIcon: Icon(Icons.email_outlined, size: 18),
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+
+        Container(
+          decoration: BoxDecoration(
+            gradient: AppTheme.primaryGradient,
+            borderRadius: BorderRadius.circular(18),
+          ),
+          child: ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.transparent,
+              shadowColor: Colors.transparent,
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+            ),
+            onPressed: _isResetting ? null : () => _handleSendResetCode(auth),
+            child: _isResetting
+                ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                : const Text('Send Verification Code to Gmail ➔', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.white)),
+          ),
+        ),
+        const SizedBox(height: 14),
+
         Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: Colors.blue.shade50,
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: Colors.blue.shade200),
+            color: const Color(0xFFEFF6FF),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: const Color(0xFFBFDBFE)),
           ),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Icon(Icons.info_outline, size: 16, color: Colors.blue),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  'Sample registered emails:\n• Patient: rahul@health.in\n• Pharmacy Owner: owner@sanjeevani.in',
-                  style: TextStyle(fontSize: 11, color: Colors.blue.shade900, height: 1.3),
-                ),
-              ),
-            ],
+          child: const Text(
+            'Sample registered emails for testing:\n• Patient: rahul@health.in\n• Pharmacy Owner: owner@sanjeevani.in',
+            style: TextStyle(fontSize: 11.5, color: Color(0xFF1E40AF), height: 1.4),
           ),
         ),
       ],
@@ -1064,172 +1296,165 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
       key: const ValueKey('ForgotPasswordCodeStep'),
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // Back Button
         Align(
           alignment: Alignment.centerLeft,
-          child: TextButton.icon(
-            icon: const Icon(Icons.arrow_back_rounded, size: 18),
-            label: const Text('Change Email'),
-            onPressed: () {
+          child: InkWell(
+            onTap: () {
               auth.clearError();
               setState(() => _currentStep = AuthStep.forgotPasswordEmail);
             },
-          ),
-        ),
-        const SizedBox(height: 8),
-
-        // Email Sent Icon
-        Center(
-          child: Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: AppTheme.success.withOpacity(0.12),
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(Icons.mark_email_read_rounded, color: AppTheme.success, size: 36),
-          ),
-        ),
-        const SizedBox(height: 16),
-
-        const Text(
-          'Enter Verification Code',
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.w900,
-            color: AppTheme.textPrimary,
-            letterSpacing: -0.5,
-          ),
-        ),
-        const SizedBox(height: 6),
-        RichText(
-          textAlign: TextAlign.center,
-          text: TextSpan(
-            style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary, height: 1.4),
-            children: [
-              const TextSpan(text: 'A 6-digit code has been sent to:\n'),
-              TextSpan(
-                text: email,
-                style: const TextStyle(fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 16),
-
-        // DEV DEMO PREVIEW CODE HELPER
-        if (_devPreviewCode != null)
-          Container(
-            padding: const EdgeInsets.all(12),
-            margin: const EdgeInsets.only(bottom: 16),
-            decoration: BoxDecoration(
-              color: Colors.amber.shade50,
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: Colors.amber.shade300),
-            ),
-            child: Row(
-              children: [
-                const Icon(Icons.vpn_key_rounded, size: 18, color: Colors.amber),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    'Verification Code: $_devPreviewCode',
-                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.amber.shade900),
-                  ),
-                ),
-                TextButton(
-                  style: TextButton.styleFrom(
-                    visualDensity: VisualDensity.compact,
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                  ),
-                  onPressed: () {
-                    _resetCodeController.text = _devPreviewCode!;
-                  },
-                  child: const Text('Auto-Fill', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
-                ),
-              ],
-            ),
-          ),
-
-        // 6-DIGIT CODE FIELD
-        TextField(
-          controller: _resetCodeController,
-          keyboardType: TextInputType.number,
-          maxLength: 6,
-          textAlign: TextAlign.center,
-          style: const TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            letterSpacing: 8,
-          ),
-          decoration: const InputDecoration(
-            counterText: '',
-            labelText: '6-Digit Verification Code',
-            hintText: '123456',
-            prefixIcon: Icon(Icons.security_rounded, size: 20),
-          ),
-        ),
-        const SizedBox(height: 14),
-
-        // NEW PASSWORD
-        TextField(
-          controller: _newPassController,
-          obscureText: _obscureNewPassword,
-          decoration: InputDecoration(
-            labelText: 'New Password',
-            hintText: 'Enter new secure password',
-            prefixIcon: const Icon(Icons.lock_outline, size: 20),
-            suffixIcon: IconButton(
-              icon: Icon(_obscureNewPassword ? Icons.visibility_off : Icons.visibility, size: 20),
-              onPressed: () => setState(() => _obscureNewPassword = !_obscureNewPassword),
+            borderRadius: BorderRadius.circular(12),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: AppTheme.neuPill(),
+              child: const Text('← Change Email', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
             ),
           ),
         ),
         const SizedBox(height: 12),
 
-        // CONFIRM NEW PASSWORD
-        TextField(
-          controller: _confirmPassController,
-          obscureText: _obscureConfirmPassword,
-          decoration: InputDecoration(
-            labelText: 'Confirm New Password',
-            hintText: 'Re-enter new password',
-            prefixIcon: const Icon(Icons.lock_outline, size: 20),
-            suffixIcon: IconButton(
-              icon: Icon(_obscureConfirmPassword ? Icons.visibility_off : Icons.visibility, size: 20),
-              onPressed: () => setState(() => _obscureConfirmPassword = !_obscureConfirmPassword),
+        Center(
+          child: Container(
+            width: 54,
+            height: 54,
+            decoration: AppTheme.neuSquircle(radius: 16),
+            child: const Center(
+              child: Text('📨', style: TextStyle(fontSize: 26)),
             ),
           ),
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 10),
 
-        // RESET BUTTON
-        ElevatedButton(
-          style: ElevatedButton.styleFrom(
-            padding: const EdgeInsets.symmetric(vertical: 14),
-            backgroundColor: AppTheme.success,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        const Text(
+          'Enter Verification Code',
+          textAlign: TextAlign.center,
+          style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: AppTheme.textPrimary),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'Code dispatched to $email',
+          textAlign: TextAlign.center,
+          style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+        ),
+        const SizedBox(height: 12),
+
+        // Dev Auto-fill Banner
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          decoration: BoxDecoration(
+            color: const Color(0xFFFEF3C7),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: const Color(0xFFFCD34D)),
           ),
-          onPressed: _isResetting ? null : () => _handleConfirmReset(auth),
-          child: _isResetting
-              ? const SizedBox(
-                  height: 20,
-                  width: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                )
-              : const Text(
-                  'Verify Code & Reset Password',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Colors.white),
+          child: Row(
+            children: [
+              const Text('🔑 Code: ', style: TextStyle(fontSize: 12, color: Color(0xFF92400E))),
+              Text(
+                _devPreviewCode ?? '123456',
+                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: Color(0xFF92400E)),
+              ),
+              const Spacer(),
+              InkWell(
+                onTap: () {
+                  _resetCodeController.text = _devPreviewCode ?? '123456';
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF59E0B),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Text(
+                    'Auto-Fill',
+                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white),
+                  ),
                 ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+
+        Container(
+          decoration: AppTheme.neuSunken(radius: 16),
+          child: TextField(
+            controller: _resetCodeController,
+            keyboardType: TextInputType.number,
+            maxLength: 6,
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, letterSpacing: 6),
+            decoration: const InputDecoration(
+              counterText: '',
+              hintText: '123456',
+              border: InputBorder.none,
+              enabledBorder: InputBorder.none,
+              focusedBorder: InputBorder.none,
+              contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            ),
+          ),
         ),
         const SizedBox(height: 10),
 
-        // RESEND CODE
-        Center(
-          child: TextButton.icon(
-            icon: const Icon(Icons.refresh_rounded, size: 16),
-            label: const Text('Resend Verification Code', style: TextStyle(fontSize: 12)),
-            onPressed: _isResetting ? null : () => _handleSendResetCode(auth),
+        Container(
+          decoration: AppTheme.neuSunken(radius: 14),
+          child: TextField(
+            controller: _newPassController,
+            obscureText: _obscureNewPassword,
+            style: const TextStyle(fontSize: 13),
+            decoration: InputDecoration(
+              hintText: 'New Password (min 4 chars)',
+              border: InputBorder.none,
+              enabledBorder: InputBorder.none,
+              focusedBorder: InputBorder.none,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              prefixIcon: const Icon(Icons.lock_outline, size: 18),
+              suffixIcon: IconButton(
+                icon: Icon(_obscureNewPassword ? Icons.visibility_off : Icons.visibility, size: 18),
+                onPressed: () => setState(() => _obscureNewPassword = !_obscureNewPassword),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+
+        Container(
+          decoration: AppTheme.neuSunken(radius: 14),
+          child: TextField(
+            controller: _confirmPassController,
+            obscureText: _obscureConfirmPassword,
+            style: const TextStyle(fontSize: 13),
+            decoration: InputDecoration(
+              hintText: 'Confirm New Password',
+              border: InputBorder.none,
+              enabledBorder: InputBorder.none,
+              focusedBorder: InputBorder.none,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              prefixIcon: const Icon(Icons.lock_outline, size: 18),
+              suffixIcon: IconButton(
+                icon: Icon(_obscureConfirmPassword ? Icons.visibility_off : Icons.visibility, size: 18),
+                onPressed: () => setState(() => _obscureConfirmPassword = !_obscureConfirmPassword),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 14),
+
+        Container(
+          decoration: BoxDecoration(
+            gradient: AppTheme.successGradient,
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.transparent,
+              shadowColor: Colors.transparent,
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            ),
+            onPressed: _isResetting ? null : () => _handleConfirmReset(auth),
+            child: _isResetting
+                ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                : const Text('Verify Code & Reset Password ➔', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5, color: Colors.white)),
           ),
         ),
       ],
@@ -1237,65 +1462,88 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
   }
 
   // ===========================================================================
-  // 1-CLICK DEMO SHORTCUTS
+  // 1-CLICK FAST EVALUATION DEMO LOGINS (Matching docs/index.html)
   // ===========================================================================
   Widget _buildDemoQuickLogins(AuthProvider auth) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppTheme.border),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Icon(Icons.flash_on_rounded, color: AppTheme.secondary, size: 16),
-              const SizedBox(width: 6),
-              Text(
-                'Instant 1-Click Evaluation Logins:',
+    return Column(
+      children: [
+        Row(
+          children: [
+            Expanded(child: Container(height: 1, color: AppTheme.border)),
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 10),
+              child: Text(
+                'OR 1-CLICK FAST EVALUATION LOGINS',
                 style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.grey.shade800,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w800,
+                  color: AppTheme.textMuted,
+                  letterSpacing: 0.5,
                 ),
               ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    side: BorderSide(color: AppTheme.primary.withOpacity(0.4)),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            Expanded(child: Container(height: 1, color: AppTheme.border)),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: InkWell(
+                onTap: auth.isLoading ? null : () => auth.demoCustomerLogin(),
+                borderRadius: BorderRadius.circular(999),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  decoration: AppTheme.neuPill(),
+                  child: const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text('👤', style: TextStyle(fontSize: 14)),
+                      SizedBox(width: 6),
+                      Text(
+                        'Patient Demo',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800,
+                          color: AppTheme.primary,
+                        ),
+                      ),
+                    ],
                   ),
-                  icon: const Icon(Icons.person, size: 14, color: AppTheme.primary),
-                  label: const Text('Patient Demo', style: TextStyle(fontSize: 11)),
-                  onPressed: auth.isLoading ? null : () => auth.demoCustomerLogin(),
                 ),
               ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: OutlinedButton.icon(
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    side: BorderSide(color: AppTheme.secondary.withOpacity(0.4)),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: InkWell(
+                onTap: auth.isLoading ? null : () => auth.demoOwnerLogin(),
+                borderRadius: BorderRadius.circular(999),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  decoration: AppTheme.neuPill(
+                    borderColor: AppTheme.success.withOpacity(0.5),
                   ),
-                  icon: const Icon(Icons.storefront, size: 14, color: AppTheme.secondary),
-                  label: const Text('Owner Demo', style: TextStyle(fontSize: 11)),
-                  onPressed: auth.isLoading ? null : () => auth.demoOwnerLogin(),
+                  child: const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text('🏪', style: TextStyle(fontSize: 14)),
+                      SizedBox(width: 6),
+                      Text(
+                        'Owner Demo',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800,
+                          color: AppTheme.success,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ],
-          ),
-        ],
-      ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 }

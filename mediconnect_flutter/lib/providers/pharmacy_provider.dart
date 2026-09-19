@@ -94,6 +94,12 @@ class PharmacyProvider extends ChangeNotifier {
   LocationPreset _currentLocation = locationPresets[0];
   LocationPreset get currentLocation => _currentLocation;
 
+  String _currentAddress = 'Sector 15, Gurgaon';
+  String get currentAddress => _currentAddress;
+
+  String _currentVillage = 'Sector 15';
+  String get currentVillage => _currentVillage;
+
   bool _isLoading = false;
   bool get isLoading => _isLoading;
 
@@ -102,6 +108,7 @@ class PharmacyProvider extends ChangeNotifier {
 
   List<Pharmacy> _pharmacies = [];
   List<Pharmacy> get pharmacies => _pharmacies;
+  List<Pharmacy> get nearbyPharmacies => _pharmacies;
 
   Pharmacy? _selectedPharmacy;
   Pharmacy? get selectedPharmacy => _selectedPharmacy;
@@ -115,13 +122,30 @@ class PharmacyProvider extends ChangeNotifier {
   /// Change active location and immediately update nearby pharmacies and nearest shop name
   Future<void> changeLocation(LocationPreset newLocation) async {
     _currentLocation = newLocation;
+    _currentAddress = newLocation.area;
+    _currentVillage = newLocation.name;
     _selectedPharmacy = null;
     notifyListeners();
 
     await fetchNearbyPharmacies();
   }
 
-  Future<void> fetchNearbyPharmacies({String? query}) async {
+  /// Change location with full address and village details
+  Future<void> changeLocationWithDetails({
+    required LocationPreset preset,
+    required String fullAddress,
+    required String village,
+  }) async {
+    _currentLocation = preset;
+    _currentAddress = fullAddress;
+    _currentVillage = village;
+    _selectedPharmacy = null;
+    notifyListeners();
+
+    await fetchNearbyPharmacies(address: fullAddress, village: village);
+  }
+
+  Future<void> fetchNearbyPharmacies({String? query, String? address, String? village}) async {
     _isLoading = true;
     _errorMessage = null;
     _searchQuery = query ?? '';
@@ -132,6 +156,8 @@ class PharmacyProvider extends ChangeNotifier {
         latitude: _currentLocation.latitude,
         longitude: _currentLocation.longitude,
         query: query,
+        address: address ?? _currentAddress,
+        village: village ?? _currentVillage,
       );
       _pharmacies = results;
       if (_pharmacies.isNotEmpty) {

@@ -25,6 +25,7 @@ mediconnect_flutter/.flutter-plugins-dependencies
 mediconnect_flutter/.packages
 mediconnect_flutter/.pub-cache/
 mediconnect_flutter/.pub/
+*.apk
 
 # IDE & Editor
 .idea/

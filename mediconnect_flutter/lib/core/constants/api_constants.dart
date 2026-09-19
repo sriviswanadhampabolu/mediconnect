@@ -2,10 +2,31 @@ import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart' show kIsWeb;
 
 class ApiConstants {
+  // Simulator mode allows full 100% offline functionality matching the GitHub Pages demo
+  static bool isSimulatorMode = false;
+
   // Auto-detects Android emulator (10.0.2.2) vs Web/Desktop (127.0.0.1)
-  static String baseUrl = (!kIsWeb && Platform.isAndroid)
+  static String _baseUrl = (!kIsWeb && Platform.isAndroid)
       ? "http://10.0.2.2:8000/api"
       : "http://127.0.0.1:8000/api";
+
+  static String get baseUrl => _baseUrl;
+
+  static void setBaseUrl(String url) {
+    var cleaned = url.trim();
+    if (cleaned.endsWith('/')) {
+      cleaned = cleaned.substring(0, cleaned.length - 1);
+    }
+    if (!cleaned.endsWith('/api')) {
+      cleaned = '$cleaned/api';
+    }
+    _baseUrl = cleaned;
+    isSimulatorMode = false;
+  }
+
+  static void enableSimulatorMode() {
+    isSimulatorMode = true;
+  }
 
   static String get triageMessage => "$baseUrl/triage/message";
   static String get nearbyPharmacies => "$baseUrl/pharmacy/nearby";
@@ -17,6 +38,7 @@ class ApiConstants {
   static String confirmOrderPayment(String orderId) => "$baseUrl/pharmacy/orders/$orderId/confirm_payment";
   
   static String get login => "$baseUrl/auth/login";
+  static String get emailLogin => "$baseUrl/auth/email-login";
   static String get signup => "$baseUrl/auth/signup";
   static String get demoLogin => "$baseUrl/auth/demo-login";
   static String get ownerDemoLogin => "$baseUrl/auth/owner-demo-login";
@@ -31,5 +53,6 @@ class ApiConstants {
   static String chatThreads(String pharmacyId) => "$baseUrl/pharmacy/chat/threads/$pharmacyId";
 
   // Default demo user ID
-  static const String defaultUserId = "usr-101";
+  static const String defaultUserId = "usr-sample-001";
+  static const String defaultOwnerId = "usr-owner-001";
 }

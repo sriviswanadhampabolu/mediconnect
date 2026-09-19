@@ -27,6 +27,9 @@ class InventoryItem {
   }
 
   double get potentialSavings => (brandedPrice - genericPrice).clamp(0.0, double.infinity);
+  String get medicineName => genericName;
+  double get price => genericPrice;
+  bool get isGeneric => true;
 }
 
 class Pharmacy {

@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../core/constants/api_constants.dart';
 import '../core/theme/app_theme.dart';
+import '../core/theme/neu_background.dart';
+import '../core/widgets/server_config_dialog.dart';
 import '../core/services/api_service.dart';
 import '../providers/auth_provider.dart';
 
@@ -197,17 +200,23 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> with Single
     final recentOrders = (_dashboardData?['recent_orders'] as List<dynamic>?) ?? [];
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: AppTheme.background,
       appBar: AppBar(
         title: Row(
           children: [
             Container(
-              padding: const EdgeInsets.all(6),
+              width: 38,
+              height: 38,
               decoration: BoxDecoration(
                 color: AppTheme.secondary.withOpacity(0.12),
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: const Icon(Icons.storefront_rounded, color: AppTheme.secondary, size: 22),
+              clipBehavior: Clip.antiAlias,
+              child: Image.asset(
+                'assets/images/app_logo.png',
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => const Icon(Icons.storefront_rounded, color: AppTheme.secondary, size: 22),
+              ),
             ),
             const SizedBox(width: 10),
             Expanded(
@@ -229,25 +238,42 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> with Single
           ],
         ),
         actions: [
-          Container(
-            margin: const EdgeInsets.symmetric(vertical: 10),
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(
-              color: AppTheme.successLight,
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: const Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.circle, color: AppTheme.success, size: 8),
-                SizedBox(width: 4),
-                Text('Store Live', style: TextStyle(color: AppTheme.success, fontSize: 11, fontWeight: FontWeight.bold)),
-              ],
+          // Server Config Status Button
+          InkWell(
+            onTap: () => ServerConfigDialog.show(context),
+            borderRadius: BorderRadius.circular(20),
+            child: Container(
+              margin: const EdgeInsets.symmetric(vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: AppTheme.neuPill(
+                active: ApiConstants.isSimulatorMode,
+                activeColor: AppTheme.warning,
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    ApiConstants.isSimulatorMode ? Icons.bolt : Icons.wifi,
+                    size: 13,
+                    color: ApiConstants.isSimulatorMode ? AppTheme.warning : AppTheme.success,
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    ApiConstants.isSimulatorMode ? 'Sim' : 'Live',
+                    style: TextStyle(
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.w800,
+                      color: ApiConstants.isSimulatorMode ? AppTheme.warning : AppTheme.success,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
-          TextButton.icon(
-            icon: const Icon(Icons.swap_horiz, size: 18, color: AppTheme.primary),
-            label: const Text('Patient View', style: TextStyle(color: AppTheme.primary, fontWeight: FontWeight.bold, fontSize: 12)),
+          const SizedBox(width: 6),
+          IconButton(
+            icon: const Icon(Icons.swap_horiz, color: AppTheme.primary),
+            tooltip: 'Switch to Patient View',
             onPressed: () {
               final cleanName = (auth.currentUser?.name ?? "Ramesh Gupta")
                   .replaceAll(RegExp(r'\((Store )?Owner\)', caseSensitive: false), '')
@@ -265,8 +291,8 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> with Single
             onPressed: _loadDashboard,
           ),
           IconButton(
-            icon: const Icon(Icons.logout),
-            tooltip: 'Logout / Switch Role',
+            icon: const Icon(Icons.logout, color: AppTheme.emergency),
+            tooltip: 'Logout',
             onPressed: () {
               auth.logout();
             },
@@ -285,32 +311,34 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> with Single
           ],
         ),
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _errorMessage != null
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
+      body: NeuBackground(
+        child: _isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : _errorMessage != null
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text('Error: $_errorMessage', style: const TextStyle(color: AppTheme.emergency)),
+                        const SizedBox(height: 12),
+                        ElevatedButton(onPressed: _loadDashboard, child: const Text('Retry')),
+                      ],
+                    ),
+                  )
+                : TabBarView(
+                    controller: _tabController,
                     children: [
-                      Text('Error: $_errorMessage', style: const TextStyle(color: AppTheme.emergency)),
-                      const SizedBox(height: 12),
-                      ElevatedButton(onPressed: _loadDashboard, child: const Text('Retry')),
+                      // TAB 1: DAILY SALES & HIGHEST ORDERED MEDICINES
+                      _buildSalesAndOrdersTab(salesSummary, highestOrdered, recentOrders),
+
+                      // TAB 2: STOCK INVENTORY MANAGEMENT
+                      _buildStockInventoryTab(inventory),
+
+                      // TAB 3: CUSTOMER CHATS INBOX & DIRECT MESSAGING
+                      _buildCustomerChatsTab(),
                     ],
                   ),
-                )
-              : TabBarView(
-                  controller: _tabController,
-                  children: [
-                    // TAB 1: DAILY SALES & HIGHEST ORDERED MEDICINES
-                    _buildSalesAndOrdersTab(salesSummary, highestOrdered, recentOrders),
-
-                    // TAB 2: STOCK INVENTORY MANAGEMENT
-                    _buildStockInventoryTab(inventory),
-
-                    // TAB 3: CUSTOMER CHATS INBOX & DIRECT MESSAGING
-                    _buildCustomerChatsTab(),
-                  ],
-                ),
+      ),
     );
   }
 

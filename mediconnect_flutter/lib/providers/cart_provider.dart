@@ -70,6 +70,7 @@ class CartProvider extends ChangeNotifier {
   }
 
   bool get exceedsPaymentLimit => finalTotal > defaultMaxLimit;
+  bool checkExceedsLimit(double userLimit) => finalTotal > userLimit;
 
   void addItemFromInventory(InventoryItem item, Pharmacy pharmacy, {bool useGeneric = true}) {
     if (_selectedPharmacyId != null && _selectedPharmacyId != pharmacy.id) {
@@ -90,6 +91,23 @@ class CartProvider extends ChangeNotifier {
         genericPrice: item.genericPrice,
         brandedPrice: item.brandedPrice,
         quantity: 1,
+      ));
+    }
+    notifyListeners();
+  }
+
+  void addItem(OrderItem item) {
+    final existingIndex = _items.indexWhere((i) => i.genericName == item.medicineName);
+    if (existingIndex >= 0) {
+      _items[existingIndex].quantity += item.quantity;
+    } else {
+      _items.add(CartItem(
+        genericName: item.medicineName,
+        brandedName: item.medicineName,
+        useGeneric: item.isGeneric,
+        genericPrice: item.unitPrice,
+        brandedPrice: item.unitPrice * 1.8,
+        quantity: item.quantity,
       ));
     }
     notifyListeners();
